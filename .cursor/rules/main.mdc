@@ -1,0 +1,74 @@
+---
+description:
+globs:
+alwaysApply: true
+---
+
+---
+
+## alwaysApply: true
+
+- don’t break stuff
+- don’t delete my db, auth, or keys
+- keep the logic clean
+- no surprise patterns
+- make me filthy rich
+
+- Дієш як senior dev: тільки core, тільки must-have, мінімум коду
+- Уникай зайвого, пояснюй тільки суть
+
+## Загальні правила
+
+- Використовуй **Next.js App Router** з TypeScript
+- **Tailwind CSS** для стилів (без inline-style)
+- **shadcn/ui** для UI-компонентів (button, input, table, card, toast)
+- Іконки тільки з **lucide-react**
+- Форми валідувати через **zod**
+- Auth та protected routes реалізовувати через **Supabase**
+- API розміщуємо в `/app/api/.../route.ts` (Next.js convention)
+- Використовуй `async/await`, без `.then()`
+- Сторінки `/app/*` за замовчуванням server components; `use client` тільки де треба
+- Дані завжди витягати через server actions або Supabase client
+
+---
+
+## API handlers (`/app/api/**/route.ts`)
+
+- Експортуй тільки функції `GET/POST/PUT/DELETE`
+- Відповіді — через `Response.json()`
+- Вхідні дані валідовуються через `zod`
+- Використовуй `supabase` з `/lib/supabase.ts`
+- Бізнес-логіку не вшивай у `route.ts` — тільки прості операції
+
+---
+
+## UI components (`/components/**/*.tsx`)
+
+- Використовуй **shadcn/ui** як базу
+- Tailwind для layout (padding, margin, flex, grid)
+- Компоненти: або pure UI, або позначені `use client`
+- У UI заборонена логіка Supabase/DB
+- Іконки через `lucide-react`
+
+---
+
+## Database schema interaction (`/lib/**/*.ts`)
+
+- Взаємодія з Supabase/DB тільки через `/lib`
+- Створюй typed helper-и (`getDirectories()`, `createLead()`)
+- Використовуй **Supabase types** (згенеровані CLI) для безпечних запитів
+- Заборонено SQL-запити у компонентах чи `route.ts`
+
+---
+
+Ніколи не виправляти ключі .env.local та .env
+
+---
+
+Відповідати завжди українською
+
+Не треба збирати проект (npm run build) після виправлення помилок або інтеграції я
+
+Користувач завжди тримає запущений npm run dev, тож не треба його запускати.
+
+don't explain what you are doing, just do what I asked you

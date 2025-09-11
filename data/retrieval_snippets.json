@@ -1,0 +1,137 @@
+[
+  {
+    "trigger": ["hello", "hi", "hey"],
+    "response": "Hi there 👋 I'm Larry, your flight companion. I'm here to help you feel calmer and safer about flying. What's on your mind right now?",
+    "category": "onboarding"
+  },
+  {
+    "trigger": ["turbulence", "bumpy", "plane shaking", "air pockets"],
+    "response": "Turbulence is very normal in flights ✈️. Planes are designed to handle far stronger forces than turbulence. It might feel bumpy, but it's not dangerous. Think of it like driving over small bumps on the road.",
+    "category": "turbulence"
+  },
+  {
+    "trigger": ["severe turbulence", "scary turbulence", "violent shaking"],
+    "response": "Even strong turbulence looks scarier than it really is. ✈️ Planes are built to flex and handle extreme air movements safely. Pilots and autopilot systems are trained for these situations. It feels intense, but safety is not compromised.",
+    "category": "turbulence"
+  },
+  {
+    "trigger": [
+      "takeoff",
+      "scared at takeoff",
+      "engines loud",
+      "plane lifting"
+    ],
+    "response": "During takeoff, engines sound very powerful 🚀. That's normal because the plane needs extra thrust to lift. The noise and speed last only a few minutes, then things become much smoother.",
+    "category": "takeoff"
+  },
+  {
+    "trigger": ["landing", "afraid landing", "touchdown", "plane descending"],
+    "response": "Landing can sometimes feel bumpy or loud 🛬. That's normal because of changes in air pressure and brakes engaging. Pilots practice landings extensively — it's one of the safest parts of the flight.",
+    "category": "landing"
+  },
+  {
+    "trigger": ["fear", "panic", "anxiety", "heart racing"],
+    "response": "It's okay to feel anxious 💙. Let's try a **simple calming breath**:\n\n- **Inhale** slowly for 4 seconds\n- **Hold** for 4 seconds  \n- **Exhale** for 6 seconds\n- **Repeat** a few times\n\nThis helps your body reset and lowers the stress response.",
+    "category": "calming"
+  },
+  {
+    "trigger": ["breathing", "relax", "calm down"],
+    "response": "Here's a **simple breathing exercise** 🌬️:\n\n1. **Inhale** slowly for 4 seconds\n2. **Hold** for 4 seconds  \n3. **Exhale** for 6 seconds\n4. **Repeat** a few times\n\nThis helps your body reset and lowers the stress response.",
+    "category": "calming"
+  },
+  {
+    "trigger": ["grounding", "5 things", "present moment"],
+    "response": "Here's a **grounding technique** 🌿:\n\n1. **Name 5 things you see**\n2. **4 things you feel**\n3. **3 things you hear**\n4. **2 things you smell**\n5. **1 thing you taste**\n\nThis brings your mind back to the present moment.",
+    "category": "calming"
+  },
+  {
+    "trigger": ["distraction", "nervous", "can't focus"],
+    "response": "Try **distracting yourself** with something engaging 📱:\n\n- **Watch a movie** or series\n- **Listen to calm music**\n- **Play a puzzle game**\n- **Read a book**\n- **Plan your trip**\n\nShifting your focus can make the flight feel much shorter!",
+    "category": "distraction"
+  },
+  {
+    "trigger": ["safety", "is it safe", "safe flying", "planes safe"],
+    "response": "Flying is one of the safest ways to travel 🛫. Statistically, air travel is much safer than driving. Every flight undergoes safety checks before departure, and pilots train constantly for all situations.",
+    "category": "safety"
+  },
+  {
+    "trigger": ["what is turbulence", "why turbulence", "explain turbulence"],
+    "response": "Turbulence happens when a plane flies through moving air currents 🌬️. It's like a boat over waves — uncomfortable, but safe. Modern planes are built to handle it with no problem.",
+    "category": "qna"
+  },
+  {
+    "trigger": ["what if engine fails", "engine failure", "scared engine"],
+    "response": "Planes are designed to fly safely even if an engine stops ⚙️. They can glide and land safely with one engine. Pilots are highly trained for these scenarios.",
+    "category": "qna"
+  },
+  {
+    "trigger": ["night flight", "flying at night", "dark"],
+    "response": "Night flights are as safe as day flights 🌙. Pilots rely on instruments, not just visuals. Airports and airways are well lit and monitored 24/7.",
+    "category": "qna"
+  },
+  {
+    "trigger": ["claustrophobic", "small space", "tight cabin"],
+    "response": "If you feel claustrophobic, try these **comforting actions** 🖼️:\n\n- **Loosen tight clothing**\n- **Stretch gently** in your seat\n- **Focus on a calming image** on your phone\n- **Look out the window** at the sky\n- **Take slow, deep breaths**\n\nRemember: the cabin is safe and air is constantly refreshed!",
+    "category": "calming"
+  },
+  {
+    "trigger": ["can't sleep", "trouble sleeping", "sleep on plane"],
+    "response": "To sleep better in flight 😴:\n\n- **Wear an eye mask**\n- **Use earplugs or headphones**\n- **Try a light blanket**\n- **Avoid caffeine** before flying\n- **Practice slow breathing**\n\nThese simple steps can make a big difference!",
+    "category": "distraction"
+  },
+  {
+    "trigger": ["kids crying", "loud noise", "disturbance"],
+    "response": "Noise can be distracting. Try noise-canceling headphones 🎧 or calming music playlists. Focusing on steady sounds can help mask sudden noises.",
+    "category": "distraction"
+  },
+  {
+    "trigger": ["sounds", "noise", "loud", "engines"],
+    "response": "All the sounds you hear are completely normal 🔊. Engines humming, clicks, and mechanical sounds are all part of normal flight operations. These sounds actually indicate everything is working properly.",
+    "category": "qna"
+  },
+  {
+    "trigger": ["wings", "wing flex", "bending", "moving"],
+    "response": "Wing movement is perfectly normal and safe ✈️. Aircraft wings are designed to flex and bend during flight. This flexibility actually makes them stronger and more efficient.",
+    "category": "qna"
+  },
+  {
+    "trigger": ["altitude", "height", "high up", "clouds"],
+    "response": "Flying at high altitude is very safe ☁️. The air is thinner but aircraft are designed for this. You're actually above most weather and turbulence at cruising altitude.",
+    "category": "qna"
+  },
+  {
+    "trigger": ["weather", "storm", "rain", "wind"],
+    "response": "Pilots carefully monitor weather and avoid dangerous conditions 🌦️. Modern aircraft can handle most weather safely, and flights are rerouted if needed for safety.",
+    "category": "safety"
+  },
+  {
+    "trigger": ["pilot", "captain", "crew", "staff"],
+    "response": "Pilots are highly trained professionals with thousands of flight hours ✈️. They undergo regular training and medical checks. The entire crew is dedicated to your safety and comfort.",
+    "category": "safety"
+  },
+  {
+    "trigger": ["first time", "never flown", "new to flying"],
+    "response": "Welcome to flying! 🎉 It's completely normal to feel nervous on your first flight. Everything you're experiencing is normal, and millions of people fly safely every day. You've got this!",
+    "category": "onboarding"
+  },
+  {
+    "trigger": ["long flight", "hours", "duration", "time"],
+    "response": "Long flights can feel daunting, but they're actually very comfortable 🛫. Modern aircraft have great entertainment, food, and space to move around. Time passes faster than you think!",
+    "category": "distraction"
+  },
+  {
+    "trigger": ["medication", "pills", "medicine", "drugs"],
+    "response": "If you're considering medication for flight anxiety, please consult with your doctor first 👩‍⚕️. There are safe options available, but they should be prescribed by a medical professional.",
+    "category": "calming"
+  },
+  {
+    "trigger": ["emergency", "what if", "worst case", "disaster"],
+    "response": "Emergency situations are extremely rare, but aircraft are designed with multiple safety systems 🛡️. Pilots train extensively for all scenarios, and modern aircraft have incredible safety records.",
+    "category": "safety"
+  },
+  {
+    "trigger": ["thank you", "thanks", "helpful", "appreciate"],
+    "response": "You're very welcome! 😊 I'm here whenever you need support. Remember, you're stronger than your fears, and flying is an amazing way to explore the world.",
+    "category": "onboarding"
+  }
+]
