@@ -13,7 +13,7 @@ const STATIC_RESPONSES = [
   "Hi there! I'm Larry, your flight companion ✈️ I'm here to help you feel calmer about flying. What's on your mind?",
   "I understand your concerns about flying. Let's try a simple breathing exercise: **Inhale** for 4 seconds, **hold** for 4, **exhale** for 6. Repeat a few times. How are you feeling now?",
   "That's completely normal to feel anxious! **Turbulence** is just like bumps on a road - the plane is designed to handle it safely. Would you like me to explain what's happening during takeoff?",
-  "Great question! During **takeoff**, you'll feel the plane accelerate and lift off. The sounds and sensations are normal. Try focusing on your breathing and remember - you're in good hands with experienced pilots.",
+
   "I'm here to support you through this. **Flying is one of the safest ways to travel** - safer than driving! What specific part of the flight concerns you most?",
   "Let's try a **grounding technique**: Name 5 things you see, 4 things you feel, 3 things you hear, 2 things you smell, 1 thing you taste. This helps bring your mind to the present moment.",
   "You're doing great by reaching out! **Anxiety is normal** and you're not alone. Many people feel this way. What would help you feel more comfortable right now?",
@@ -191,11 +191,13 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const messages = body.messages ?? [];
 
-    // In development mode, return static responses for testing
-    if (process.env.NODE_ENV === "development") {
+    // Use static responses only if explicitly enabled via environment variable
+    if (process.env.USE_STATIC_RESPONSES === "true") {
+      console.log("Using static responses");
       return createStaticResponse(messages);
     }
 
+    console.log("Using AI responses");
     return await createChatResponse(messages);
   } catch (e: any) {
     console.error("Request parsing error:", e);
