@@ -130,7 +130,7 @@ export function StartChatWindow({ onStartChat }: StartChatWindowProps) {
           {isHydrated && !canSendMessage() && isLimitRendered && (
             <div className="p-3 bg-orange-50 border border-orange-200 rounded-lg">
               <p className="text-sm text-orange-700 text-center">
-                You've reached the limit of messages. Sign up to continue
+                You&apos;ve reached the limit of messages. Sign up to continue
                 chatting with Larry.
               </p>
             </div>
