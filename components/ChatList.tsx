@@ -1,37 +1,24 @@
 "use client";
 
-import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Plus, MessageCircle } from "lucide-react";
 
-interface ChatSession {
+interface Chat {
   id: string;
   title: string;
-  createdAt: Date;
-  lastMessage?: string;
+  created_at: string;
+  updated_at: string;
+  user_id: string;
 }
 
-export function ChatList() {
-  const [chats, setChats] = useState<ChatSession[]>([]);
-  const router = useRouter();
+interface ChatListProps {
+  chats: Chat[];
+}
 
-  useEffect(() => {
-    // Завантажуємо збережені чати з localStorage
-    const savedChats = localStorage.getItem("larry-chats");
-    if (savedChats) {
-      try {
-        const parsedChats = JSON.parse(savedChats).map((chat: any) => ({
-          ...chat,
-          createdAt: new Date(chat.createdAt),
-        }));
-        setChats(parsedChats);
-      } catch (error) {
-        console.error("Error parsing saved chats:", error);
-      }
-    }
-  }, []);
+export function ChatList({ chats }: ChatListProps) {
+  const router = useRouter();
 
   const handleNewChat = () => {
     router.push("/");
@@ -44,11 +31,6 @@ export function ChatList() {
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
-        <h2 className="text-xl font-semibold text-gray-700">
-          {chats.length === 0
-            ? "No chats yet"
-            : `${chats.length} chat${chats.length === 1 ? "" : "s"}`}
-        </h2>
         <Button onClick={handleNewChat} className="flex items-center gap-2">
           <Plus className="h-4 w-4" />
           New Chat
@@ -79,17 +61,19 @@ export function ChatList() {
               <CardHeader>
                 <CardTitle className="text-lg">{chat.title}</CardTitle>
                 <p className="text-sm text-gray-500">
-                  {chat.createdAt.toLocaleDateString()} at{" "}
-                  {chat.createdAt.toLocaleTimeString()}
+                  {new Date(chat.updated_at).toLocaleDateString("en-GB", {
+                    day: "numeric",
+                    month: "short",
+                    year: "numeric",
+                  })}{" "}
+                  at{" "}
+                  {new Date(chat.updated_at).toLocaleTimeString("en-GB", {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                    hour12: false,
+                  })}
                 </p>
               </CardHeader>
-              {chat.lastMessage && (
-                <CardContent>
-                  <p className="text-gray-600 text-sm truncate">
-                    {chat.lastMessage}
-                  </p>
-                </CardContent>
-              )}
             </Card>
           ))}
         </div>

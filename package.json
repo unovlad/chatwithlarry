@@ -2,7 +2,7 @@
   "name": "langchain-nextjs-template",
   "version": "0.0.0",
   "private": true,
-  "packageManager": "yarn@1.22.22",
+  "packageManager": "npm@10.0.0",
   "scripts": {
     "dev": "next dev",
     "build": "next build",

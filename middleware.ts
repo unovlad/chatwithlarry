@@ -52,6 +52,17 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
+  // Allow guest access to chat routes (they will be handled by the page components)
+  const chatRoutes = ["/chat"];
+  const isChatRoute = chatRoutes.some((route) =>
+    request.nextUrl.pathname.startsWith(route),
+  );
+
+  // For chat routes, allow both authenticated and guest users
+  if (isChatRoute) {
+    return supabaseResponse;
+  }
+
   // Redirect authenticated users away from auth pages
   const authRoutes = ["/auth"];
   const isAuthRoute = authRoutes.some((route) =>

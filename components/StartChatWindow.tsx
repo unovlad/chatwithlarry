@@ -6,9 +6,14 @@ import { ArrowRight, Send, Paperclip, Monitor, Globe } from "lucide-react";
 import { toast } from "sonner";
 import BlueGradientBackground from "./BlueGradientBackground";
 import { useAuth } from "@/contexts/AuthContext";
+import {
+  getGuestSession,
+  incrementGuestMessageCount,
+  getRemainingMessages as getGuestRemainingMessages,
+} from "@/lib/guestStorage";
 
 interface StartChatWindowProps {
-  onStartChat: (initialMessage?: string) => void;
+  onStartChat: (initialMessage?: string) => Promise<void>;
 }
 
 const SUGGESTED_QUESTIONS = [
@@ -22,23 +27,42 @@ export function StartChatWindow({ onStartChat }: StartChatWindowProps) {
   const [inputValue, setInputValue] = useState("");
   const [isHydrated, setIsHydrated] = useState(false);
   const [isLimitRendered, setIsLimitRendered] = useState(false);
+  const [guestSession, setGuestSession] = useState(getGuestSession());
 
-  const { canSendMessage, incrementMessageCount } = useAuth();
+  const { user, canSendMessage, incrementMessageCount } = useAuth();
 
   useEffect(() => {
     setIsHydrated(true);
   }, []);
 
   const handleQuestionClick = async (question: string) => {
-    if (isHydrated && !canSendMessage()) {
+    // Перевіряємо ліміт повідомлень
+    let canSend = false;
+    if (user) {
+      canSend = canSendMessage();
+    } else {
+      // Для гостьових користувачів перевіряємо localStorage
+      const updatedGuestSession = getGuestSession();
+      canSend = updatedGuestSession.canSendMessage;
+      setGuestSession(updatedGuestSession);
+    }
+
+    if (isHydrated && !canSend) {
       setIsLimitRendered(true);
       toast.error(
-        "You've reached the limit of messages. Please sign up to continue.",
+        "You've reached the limit of 3 messages. Please sign up to continue.",
       );
       return;
     }
+
     try {
-      await incrementMessageCount();
+      if (user) {
+        await incrementMessageCount();
+      } else {
+        incrementGuestMessageCount();
+        setGuestSession(getGuestSession());
+      }
+      console.log("Starting chat with question:", question);
       onStartChat(question);
     } catch (error) {
       console.error("Error incrementing message count:", error);
@@ -48,16 +72,35 @@ export function StartChatWindow({ onStartChat }: StartChatWindowProps) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (inputValue.trim()) {
-      if (isHydrated && !canSendMessage()) {
+      // Перевіряємо ліміт повідомлень
+      let canSend = false;
+      if (user) {
+        canSend = canSendMessage();
+      } else {
+        // Для гостьових користувачів перевіряємо localStorage
+        const updatedGuestSession = getGuestSession();
+        canSend = updatedGuestSession.canSendMessage;
+        setGuestSession(updatedGuestSession);
+      }
+
+      if (isHydrated && !canSend) {
         setIsLimitRendered(true);
         toast.error(
-          "You've reached the limit of messages. Please sign up to continue.",
+          "You've reached the limit of 3 messages. Please sign up to continue.",
         );
         return;
       }
+
       try {
-        await incrementMessageCount();
+        if (user) {
+          await incrementMessageCount();
+        } else {
+          incrementGuestMessageCount();
+          setGuestSession(getGuestSession());
+        }
+        console.log("Starting chat with input:", inputValue.trim());
         onStartChat(inputValue.trim());
+        setInputValue("");
       } catch (error) {
         console.error("Error incrementing message count:", error);
       }
@@ -66,13 +109,14 @@ export function StartChatWindow({ onStartChat }: StartChatWindowProps) {
 
   return (
     <div className="flex flex-col flex-1 ">
-      <div className="h-full overflow-y-auto px-4 py-8">
+      <div className="h-full overflow-y-auto px-4 py-8 mt-4 sm:mt-20 md:pb-20">
         <div className="max-w-2xl w-full mx-auto space-y-6">
           {/* Header */}
           <div className="text-center">
-            <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-2">
-              Meet Larry <span className="text-blue-500">✈️</span>
-            </h1>
+            <div className="text-3xl md:text-4xl font-bold text-gray-900 mb-2 flex items-center justify-center gap-2">
+              <h1>Meet Larry</h1>
+              <img className="w-8 h-8" src="/svg.svg" alt="Larry AI" />
+            </div>
             <p className="text-base md:text-lg text-gray-600 mb-2">
               Your AI-powered flight anxiety support companion
             </p>
@@ -130,20 +174,13 @@ export function StartChatWindow({ onStartChat }: StartChatWindowProps) {
           {isHydrated && !canSendMessage() && isLimitRendered && (
             <div className="p-3 bg-orange-50 border border-orange-200 rounded-lg">
               <p className="text-sm text-orange-700 text-center">
-                You&apos;ve reached the limit of messages. Sign up to continue
+                You&apos;ve reached the limit of 3 messages. Sign up to continue
                 chatting with Larry.
               </p>
             </div>
           )}
         </div>
       </div>
-
-      {/* Footer Disclaimer */}
-      {/* <div className="mt-auto pt-4 pb-4">
-        <div className="text-xs text-gray-500 text-center px-4">
-          LarryAI can make mistakes. Check important info.
-        </div>
-      </div> */}
     </div>
   );
 }

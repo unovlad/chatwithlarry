@@ -2,13 +2,14 @@
 
 import { type Message } from "ai";
 import { useChat } from "ai/react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import type { FormEvent, ReactNode } from "react";
 import { toast } from "sonner";
 import { StickToBottom, useStickToBottomContext } from "use-stick-to-bottom";
 
 import { ChatMessageBubble } from "@/components/ChatMessageBubble";
 import { IntermediateStep } from "./IntermediateStep";
+import { TypingIndicator } from "./TypingIndicator";
 import { Button } from "./ui/button";
 import { ArrowDown, LoaderCircle, Paperclip } from "lucide-react";
 import { Checkbox } from "./ui/checkbox";
@@ -25,68 +26,97 @@ import { cn } from "@/utils/cn";
 import { AuthCTA } from "./AuthCTA";
 import { useAuth } from "@/contexts/AuthContext";
 import type { Chat, Message as DBMessage } from "@/types/user";
-
-// Функція для збереження чату в localStorage
-function saveChatToStorage(
-  sessionId: string,
-  messages: Message[],
-  lastMessage: string,
-) {
-  try {
-    const chatData = {
-      id: sessionId,
-      title:
-        messages.length > 0
-          ? messages[0].content.slice(0, 50) + "..."
-          : "New Chat",
-      createdAt: new Date().toISOString(),
-      lastMessage: lastMessage,
-      messages: messages,
-    };
-
-    const existingChats = localStorage.getItem("larry-chats");
-    const chats = existingChats ? JSON.parse(existingChats) : [];
-
-    // Оновлюємо існуючий чат або додаємо новий
-    const existingIndex = chats.findIndex((chat: any) => chat.id === sessionId);
-    if (existingIndex >= 0) {
-      chats[existingIndex] = chatData;
-    } else {
-      chats.unshift(chatData); // Додаємо на початок списку
-    }
-
-    // Зберігаємо тільки останні 50 чатів
-    const limitedChats = chats.slice(0, 50);
-    localStorage.setItem("larry-chats", JSON.stringify(limitedChats));
-  } catch (error) {
-    console.error("Error saving chat to storage:", error);
-  }
-}
+import {
+  getGuestSession,
+  incrementGuestMessageCount,
+  setGuestChatId,
+  getRemainingMessages as getGuestRemainingMessages,
+  isGuestSessionActive,
+} from "@/lib/guestStorage";
 
 function ChatMessages(props: {
   messages: Message[];
   emptyStateComponent: ReactNode;
   sourcesForMessages: Record<string, any>;
-  aiEmoji?: string;
   className?: string;
+  isLoading?: boolean;
 }) {
+  const { scrollToBottom } = useStickToBottomContext();
+  const prevMessagesLengthRef = useRef(0);
+
+  // Функція для розбиття повідомлень на окремі бульбашки за параграфами
+  const splitMessageByParagraphs = (message: Message): Message[] => {
+    // Розбиваємо контент за подвійними переносами рядків (параграфи)
+    const paragraphs = message.content.split("\n\n").filter((p) => p.trim());
+
+    if (paragraphs.length <= 1) {
+      return [message];
+    }
+
+    // Створюємо окремі повідомлення для кожного параграфа
+    return paragraphs.map((paragraph, index) => ({
+      ...message,
+      id: `${message.id}-${index}`,
+      content: paragraph.trim(),
+    }));
+  };
+
+  // Розбиваємо всі повідомлення
+  const processedMessages = props.messages.flatMap(splitMessageByParagraphs);
+
+  // Автоскрол при додаванні нових повідомлень
+  useEffect(() => {
+    const currentMessagesLength = processedMessages.length;
+
+    if (currentMessagesLength > prevMessagesLengthRef.current) {
+      // Є нові повідомлення, скролимо вниз
+      setTimeout(() => {
+        scrollToBottom();
+      }, 100);
+    }
+
+    prevMessagesLengthRef.current = currentMessagesLength;
+  }, [processedMessages.length, scrollToBottom]);
+
+  // Автоскрол коли зникає TypingIndicator
+  useEffect(() => {
+    if (!props.isLoading) {
+      // TypingIndicator зник, скролимо вниз
+      setTimeout(() => {
+        scrollToBottom();
+      }, 50);
+    }
+  }, [props.isLoading, scrollToBottom]);
+
   return (
-    <div className="flex flex-col max-w-[768px] bg-gray-100 mx-auto pb-12 w-full">
-      {props.messages.map((m, i) => {
+    <div className="flex flex-col max-w-[768px] mx-auto pb-2 w-full">
+      {processedMessages.map((m, i) => {
         if (m.role === "system") {
           return <IntermediateStep key={m.id} message={m} />;
         }
 
         const sourceKey = (props.messages.length - 1 - i).toString();
+
+        // Перевіряємо чи це останній параграф в серії повідомлень від того ж відправника
+        const isLastInSeries =
+          i === processedMessages.length - 1 ||
+          processedMessages[i + 1]?.role !== m.role;
+
+        // Перевіряємо чи це перший параграф в серії повідомлень від того ж відправника
+        const isFirstInSeries =
+          i === 0 || processedMessages[i - 1]?.role !== m.role;
+
         return (
           <ChatMessageBubble
             key={m.id}
             message={m}
-            aiEmoji={props.aiEmoji}
             sources={props.sourcesForMessages[sourceKey]}
+            showTimestamp={isLastInSeries}
+            showAvatar={isFirstInSeries}
           />
         );
       })}
+      {props.isLoading && <TypingIndicator />}
     </div>
   );
 }
@@ -209,11 +239,10 @@ export function ChatWindow(props: {
   endpoint: string;
   emptyStateComponent?: ReactNode;
   placeholder?: string;
-  emoji?: string;
   showIngestForm?: boolean;
   showIntermediateStepsToggle?: boolean;
-  initialMessage?: string;
   sessionId?: string;
+  isGuestChat?: boolean;
 }) {
   const [showIntermediateSteps, setShowIntermediateSteps] = useState(
     !!props.showIntermediateStepsToggle,
@@ -227,30 +256,51 @@ export function ChatWindow(props: {
 
   const {
     user,
+    loading: authLoading,
     canSendMessage,
     incrementMessageCount,
     createChat,
     saveMessage,
     getRemainingMessages,
+    loadMessages,
   } = useAuth();
 
   const [showAuthCTA, setShowAuthCTA] = useState(false);
   const [isHydrated, setIsHydrated] = useState(false);
+  const [currentChatId, setCurrentChatId] = useState<string | null>(null);
+  const [guestSession, setGuestSession] = useState(getGuestSession());
+  const [isWaitingForResponse, setIsWaitingForResponse] = useState(false);
 
   useEffect(() => {
     setIsHydrated(true);
-  }, []);
 
-  // Show AuthCTA if user reaches limit and has initial message
-  useEffect(() => {
-    if (isHydrated && props.initialMessage && !canSendMessage()) {
-      setShowAuthCTA(true);
+    console.log(
+      "ChatWindow useEffect - sessionId:",
+      props.sessionId,
+      "isGuestChat:",
+      props.isGuestChat,
+    );
+
+    // Якщо це гостьовий чат, встановлюємо chatId в localStorage
+    if (props.isGuestChat && props.sessionId) {
+      console.log("Setting guest chat ID:", props.sessionId);
+      setGuestChatId(props.sessionId);
+      setCurrentChatId(props.sessionId);
+    } else if (props.sessionId) {
+      console.log("Setting regular chat ID:", props.sessionId);
+      setCurrentChatId(props.sessionId);
     }
-  }, [isHydrated, props.initialMessage, canSendMessage]);
+  }, [props.sessionId, props.isGuestChat]);
 
   const chat = useChat({
     api: props.endpoint,
+    body: {
+      chatId: currentChatId,
+    },
     onResponse(response) {
+      // Приховуємо typing indicator коли починаємо отримувати відповідь
+      setIsWaitingForResponse(false);
+
       const sourcesHeader = response.headers.get("x-sources");
       const sources = sourcesHeader
         ? JSON.parse(Buffer.from(sourcesHeader, "base64").toString("utf8"))
@@ -268,6 +318,9 @@ export function ChatWindow(props: {
     onError: (e) => {
       console.error("Chat error:", e);
 
+      // Приховуємо typing indicator при помилці
+      setIsWaitingForResponse(false);
+
       // Handle specific error types
       if (e.message?.includes("Connection interrupted")) {
         toast.error("Connection lost", {
@@ -283,82 +336,221 @@ export function ChatWindow(props: {
         });
       }
     },
-    onFinish: (message) => {
-      // Зберігаємо чат в localStorage
-      if (props.sessionId) {
-        saveChatToStorage(props.sessionId, chat.messages, message.content);
+    onFinish: async (message) => {
+      // Приховуємо typing indicator коли відповідь завершена
+      setIsWaitingForResponse(false);
+
+      // Визначаємо chatId для збереження
+      const chatIdForSave =
+        currentChatId || (user && props.sessionId ? props.sessionId : null);
+
+      console.log(
+        "onFinish called - user:",
+        !!user,
+        "currentChatId:",
+        currentChatId,
+        "chatIdForSave:",
+        chatIdForSave,
+        "isGuestChat:",
+        props.isGuestChat,
+      );
+
+      // Зберігаємо відповідь асистента в БД
+      if (chatIdForSave) {
+        try {
+          console.log("Saving assistant message to database:", message.content);
+          if (user) {
+            // Для авторизованих користувачів
+            await saveMessage(chatIdForSave, "assistant", message.content);
+          } else if (props.isGuestChat) {
+            // Для гостьових сесій - зберігаємо через guest service
+            const { addGuestMessage } = await import("@/lib/guestService");
+            await addGuestMessage(chatIdForSave, message.content, "assistant");
+          }
+          console.log("Assistant message saved successfully to database");
+        } catch (error) {
+          console.error("Error saving assistant message to database:", error);
+        }
+      } else {
+        console.log(
+          "Not saving to database - user:",
+          !!user,
+          "chatIdForSave:",
+          chatIdForSave,
+        );
       }
     },
   });
 
+  // Автоскрол при зміні повідомлень
+  useEffect(() => {
+    if (chat.messages.length > 0) {
+      // Невелика затримка для того, щоб DOM оновився
+      setTimeout(() => {
+        // Використовуємо StickToBottom компонент для скролу
+        const scrollContainer = document.querySelector(
+          "[data-stick-to-bottom]",
+        );
+        if (scrollContainer) {
+          scrollContainer.scrollTop = scrollContainer.scrollHeight;
+        }
+      }, 100);
+    }
+  }, [chat.messages.length]);
+
   // Завантажуємо існуючий чат або відправляємо початкове повідомлення
   useEffect(() => {
-    if (isHydrated && chat.messages.length === 0) {
+    // Очікуємо завершення авторизації перед завантаженням
+    if (isHydrated && !authLoading && chat.messages.length === 0) {
+      console.log(
+        "Loading chat - user:",
+        !!user,
+        "authLoading:",
+        authLoading,
+        "sessionId:",
+        props.sessionId,
+        "isGuestChat:",
+        props.isGuestChat,
+        "currentChatId:",
+        currentChatId,
+      );
+
       if (props.sessionId) {
-        // Завантажуємо існуючий чат
-        const existingChats = localStorage.getItem("larry-chats");
-        if (existingChats) {
-          try {
-            const chats = JSON.parse(existingChats);
-            const existingChat = chats.find(
-              (chat: any) => chat.id === props.sessionId,
-            );
-            if (existingChat && existingChat.messages) {
-              chat.setMessages(existingChat.messages);
-              return;
-            }
-          } catch (error) {
-            console.error("Error loading existing chat:", error);
-          }
+        // Тепер sessionId - це UUID чату з БД, доступ перевірено на сервері
+        if (user) {
+          // Завантажуємо з БД для авторизованих користувачів
+          console.log("Loading from database for chatId:", props.sessionId);
+          loadChatFromDatabase();
+        } else if (props.isGuestChat) {
+          // Завантажуємо з БД для гостьових сесій
+          console.log(
+            "Loading guest chat from database for chatId:",
+            props.sessionId,
+          );
+          loadGuestChatFromDatabase();
         }
-
-        // Перевіряємо чи є збережене початкове повідомлення для цієї сесії
-        const initialMessageKey = `larry-initial-message-${props.sessionId}`;
-        const savedInitialMessage = localStorage.getItem(initialMessageKey);
-
-        if (savedInitialMessage) {
-          // Видаляємо збережене повідомлення, оскільки воно вже використане
-          localStorage.removeItem(initialMessageKey);
-
-          const timer = setTimeout(() => {
-            chat.append({
-              role: "user",
-              content: savedInitialMessage,
-            });
-          }, 100);
-
-          return () => clearTimeout(timer);
-        }
-      }
-
-      // Відправляємо початкове повідомлення з пропсів, якщо воно є
-      if (props.initialMessage) {
-        const timer = setTimeout(() => {
-          if (props.initialMessage) {
-            chat.append({
-              role: "user",
-              content: props.initialMessage,
-            });
-          }
-        }, 100);
-
-        return () => clearTimeout(timer);
+      } else {
+        console.log("No sessionId provided");
       }
     }
   }, [
-    props.initialMessage,
     props.sessionId,
+    props.isGuestChat,
     chat.messages.length,
     chat,
     isHydrated,
+    authLoading,
+    user,
+    currentChatId,
   ]);
+
+  const loadChatFromDatabase = async () => {
+    if (!user || !props.sessionId) return;
+
+    try {
+      console.log("Loading chat from database:", props.sessionId);
+      const messages = await loadMessages(props.sessionId);
+
+      if (messages && messages.length > 0) {
+        console.log("Found messages in database:", messages.length);
+        // Конвертуємо повідомлення з БД в формат Vercel AI
+        const vercelMessages = messages.map((msg: any) => ({
+          id: msg.id,
+          role: msg.role,
+          content: msg.content,
+          createdAt: new Date(msg.created_at),
+        }));
+        chat.setMessages(vercelMessages);
+        setCurrentChatId(props.sessionId);
+
+        // Перевіряємо чи останнє повідомлення від користувача (без відповіді AI)
+        const lastMessage = messages[messages.length - 1];
+        if (lastMessage.role === "user") {
+          console.log("Last message is from user, sending to AI...");
+          // Відправляємо запит до AI для отримання відповіді
+          setTimeout(() => {
+            chat.reload();
+          }, 100);
+        }
+        return;
+      } else {
+        console.log("No messages found in database for chat:", props.sessionId);
+        // Якщо чат існує, але немає повідомлень, встановлюємо currentChatId
+        setCurrentChatId(props.sessionId);
+      }
+    } catch (error) {
+      console.error("Error loading chat from database:", error);
+      // Для помилок просто встановлюємо currentChatId
+      setCurrentChatId(props.sessionId);
+    }
+  };
+
+  const loadGuestChatFromDatabase = async () => {
+    if (!props.sessionId) return;
+
+    try {
+      console.log("Loading guest chat from database:", props.sessionId);
+      const { getGuestChatMessages } = await import("@/lib/guestService");
+      const messages = await getGuestChatMessages(props.sessionId);
+
+      console.log("Raw messages from database:", messages);
+
+      if (messages && messages.length > 0) {
+        console.log("Found guest messages in database:", messages.length);
+        // Конвертуємо повідомлення з БД в формат Vercel AI
+        const vercelMessages = messages.map((msg: any) => ({
+          id: msg.id,
+          role: msg.role,
+          content: msg.content,
+          createdAt: new Date(msg.created_at),
+        }));
+        console.log("Converted messages for chat:", vercelMessages);
+        chat.setMessages(vercelMessages);
+        setCurrentChatId(props.sessionId);
+
+        // Перевіряємо чи останнє повідомлення від користувача (без відповіді AI)
+        const lastMessage = messages[messages.length - 1];
+        if (lastMessage.role === "user") {
+          console.log("Last guest message is from user, sending to AI...");
+          // Відправляємо запит до AI для отримання відповіді
+          setTimeout(() => {
+            chat.reload();
+          }, 100);
+        }
+        return;
+      } else {
+        console.log(
+          "No guest messages found in database for chat:",
+          props.sessionId,
+        );
+        // Якщо чат існує, але немає повідомлень, встановлюємо currentChatId
+        setCurrentChatId(props.sessionId);
+      }
+    } catch (error) {
+      console.error("Error loading guest chat from database:", error);
+      // Для помилок просто встановлюємо currentChatId
+      setCurrentChatId(props.sessionId);
+    }
+  };
 
   async function sendMessage(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     if (chat.isLoading || intermediateStepsLoading) return;
 
     // Перевіряємо ліміт повідомлень
-    if (!canSendMessage()) {
+    let canSend = false;
+    if (user) {
+      canSend = canSendMessage();
+    } else if (props.isGuestChat) {
+      // Для гостьових сесій перевіряємо localStorage
+      const updatedGuestSession = getGuestSession();
+      canSend = updatedGuestSession.canSendMessage;
+      setGuestSession(updatedGuestSession);
+    } else {
+      canSend = true; // Для нових користувачів без сесії
+    }
+
+    if (!canSend) {
       setShowAuthCTA(true);
       toast.error(
         "You've reached the limit of messages. Please sign up to continue.",
@@ -366,10 +558,54 @@ export function ChatWindow(props: {
       return;
     }
 
+    // Встановлюємо chatId - тепер чат вже створений через Server Action
+    let chatId = currentChatId;
+    if (user && props.sessionId && !chatId) {
+      // Якщо користувач залогінений і є sessionId (UUID чату), встановлюємо його
+      chatId = props.sessionId;
+      setCurrentChatId(chatId);
+      console.log("Set currentChatId from sessionId:", chatId);
+    } else if (props.isGuestChat && props.sessionId && !chatId) {
+      chatId = props.sessionId;
+      setCurrentChatId(chatId);
+    }
+
     // Збільшуємо лічильник повідомлень
-    incrementMessageCount();
+    if (user) {
+      incrementMessageCount();
+    } else if (props.isGuestChat) {
+      incrementGuestMessageCount();
+      setGuestSession(getGuestSession());
+    }
 
     if (!showIntermediateSteps) {
+      // Зберігаємо повідомлення користувача в БД перед відправкою
+      if (chatId) {
+        try {
+          console.log(
+            "Saving user message to database:",
+            chat.input,
+            "chatId:",
+            chatId,
+            "isGuestChat:",
+            props.isGuestChat,
+          );
+          if (user) {
+            await saveMessage(chatId, "user", chat.input);
+          } else if (props.isGuestChat) {
+            const { addGuestMessage } = await import("@/lib/guestService");
+            await addGuestMessage(chatId, chat.input, "user");
+            console.log("Guest user message saved successfully");
+          }
+        } catch (error) {
+          console.error("Error saving user message:", error);
+        }
+      } else {
+        console.log("No chatId available for saving user message");
+      }
+
+      // Показуємо typing indicator перед відправкою
+      setIsWaitingForResponse(true);
       chat.handleSubmit(e);
       return;
     }
@@ -377,13 +613,32 @@ export function ChatWindow(props: {
     // Some extra work to show intermediate steps properly
     setIntermediateStepsLoading(true);
 
+    // Зберігаємо повідомлення користувача в БД
+    if (chatId) {
+      try {
+        console.log("Saving user message to database:", chat.input);
+        if (user) {
+          await saveMessage(chatId, "user", chat.input);
+        } else if (props.isGuestChat) {
+          const { addGuestMessage } = await import("@/lib/guestService");
+          await addGuestMessage(chatId, chat.input, "user");
+        }
+      } catch (error) {
+        console.error("Error saving user message:", error);
+      }
+    }
+
     chat.setInput("");
     const messagesWithUserReply = chat.messages.concat({
       id: chat.messages.length.toString(),
       content: chat.input,
       role: "user",
+      createdAt: new Date(),
     });
     chat.setMessages(messagesWithUserReply);
+
+    // Показуємо typing indicator перед відправкою
+    setIsWaitingForResponse(true);
 
     const response = await fetch(props.endpoint, {
       method: "POST",
@@ -444,6 +699,7 @@ export function ChatWindow(props: {
         id: newMessages.length.toString(),
         content: responseMessages[responseMessages.length - 1].content,
         role: "assistant",
+        createdAt: new Date(),
       },
     ]);
   }
@@ -455,23 +711,31 @@ export function ChatWindow(props: {
           showAuthCTA && isHydrated ? (
             <div className="flex flex-col max-w-[768px] mx-auto pb-6 w-full">
               <ChatMessages
-                aiEmoji={props.emoji}
                 messages={chat.messages}
                 emptyStateComponent={props.emptyStateComponent}
                 sourcesForMessages={sourcesForMessages}
+                isLoading={isWaitingForResponse}
               />
               <div className="">
-                <AuthCTA remainingMessages={getRemainingMessages()} />
+                <AuthCTA
+                  remainingMessages={
+                    user
+                      ? getRemainingMessages()
+                      : props.isGuestChat
+                        ? getGuestRemainingMessages()
+                        : 0
+                  }
+                />
               </div>
             </div>
-          ) : chat.messages.length === 0 && !props.initialMessage ? (
+          ) : chat.messages.length === 0 ? (
             <div>{props.emptyStateComponent}</div>
           ) : (
             <ChatMessages
-              aiEmoji={props.emoji}
               messages={chat.messages}
               emptyStateComponent={props.emptyStateComponent}
               sourcesForMessages={sourcesForMessages}
+              isLoading={isWaitingForResponse}
             />
           )
         }
@@ -483,15 +747,22 @@ export function ChatWindow(props: {
             loading={chat.isLoading || intermediateStepsLoading}
             placeholder={props.placeholder ?? "What's it like to be a pirate?"}
           >
-            {!showAuthCTA &&
-              isHydrated &&
-              user &&
-              user.subscription_plan === "free" && (
-                <div className="text-xs text-gray-500">
-                  {getRemainingMessages()} free message
-                  {getRemainingMessages() === 1 ? "" : "s"} remaining
-                </div>
-              )}
+            {!showAuthCTA && isHydrated && (
+              <>
+                {user && user.subscription_plan === "free" && (
+                  <div className="text-xs text-gray-500">
+                    {getRemainingMessages()} free message
+                    {getRemainingMessages() === 1 ? "" : "s"} remaining
+                  </div>
+                )}
+                {props.isGuestChat && !user && (
+                  <div className="text-xs text-gray-500">
+                    {getGuestRemainingMessages()} guest message
+                    {getGuestRemainingMessages() === 1 ? "" : "s"} remaining
+                  </div>
+                )}
+              </>
+            )}
             {props.showIngestForm && (
               <Dialog>
                 <DialogTrigger asChild>

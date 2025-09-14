@@ -28,8 +28,8 @@ export function AuthCTA({ remainingMessages = 0 }: AuthCTAProps) {
             </h3>
             <p className="text-sm text-gray-600">
               {remainingMessages === 0
-                ? "You've used all messages. Sign up to continue."
-                : `Sign up to get 30 messages per month and save your chat history.`}
+                ? "You've used all 3 guest messages. Sign up to continue chatting with Larry!"
+                : `You have ${remainingMessages} guest message${remainingMessages === 1 ? "" : "s"} left. Sign up to get unlimited messages and save your chat history.`}
             </p>
           </div>
 

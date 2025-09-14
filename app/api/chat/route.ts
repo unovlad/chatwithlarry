@@ -8,62 +8,12 @@ import { findRelevantSnippet } from "@/lib/retrieval";
 
 export const runtime = "edge";
 
-// Static responses for development testing
-const STATIC_RESPONSES = [
-  "Hi there! I'm Larry, your flight companion ✈️ I'm here to help you feel calmer about flying. What's on your mind?",
-  "I understand your concerns about flying. Let's try a simple breathing exercise: **Inhale** for 4 seconds, **hold** for 4, **exhale** for 6. Repeat a few times. How are you feeling now?",
-  "That's completely normal to feel anxious! **Turbulence** is just like bumps on a road - the plane is designed to handle it safely. Would you like me to explain what's happening during takeoff?",
-
-  "I'm here to support you through this. **Flying is one of the safest ways to travel** - safer than driving! What specific part of the flight concerns you most?",
-  "Let's try a **grounding technique**: Name 5 things you see, 4 things you feel, 3 things you hear, 2 things you smell, 1 thing you taste. This helps bring your mind to the present moment.",
-  "You're doing great by reaching out! **Anxiety is normal** and you're not alone. Many people feel this way. What would help you feel more comfortable right now?",
-  "Remember, **pilots and crew are highly trained professionals** who do this every day. They want you to have a safe, comfortable flight. Is there anything specific about the flight process you'd like me to explain?",
-];
-
-function createStaticResponse(messages: any[]): Response {
-  const currentMessage = messages[messages.length - 1]?.content || "";
-
-  // Get relevant context from retrieval system
-  const context = findRelevantSnippet(currentMessage);
-
-  // Check if we found a specific match (not the default text)
-  const hasSpecificMatch = !context.includes("What's on your mind right now?");
-
-  let responseText: string;
-
-  if (hasSpecificMatch) {
-    // Use the specific context response
-    responseText = context;
-  } else {
-    // Use a random static response
-    const randomIndex = Math.floor(Math.random() * STATIC_RESPONSES.length);
-    responseText = STATIC_RESPONSES[randomIndex];
-  }
-
-  // Simulate streaming response
-  const encoder = new TextEncoder();
-  const stream = new ReadableStream({
-    start(controller) {
-      // Split response into chunks for realistic streaming
-      const words = responseText.split(" ");
-      let index = 0;
-
-      const sendChunk = () => {
-        if (index < words.length) {
-          const chunk = words[index] + (index < words.length - 1 ? " " : "");
-          controller.enqueue(encoder.encode(chunk));
-          index++;
-          setTimeout(sendChunk, 50 + Math.random() * 100); // Random delay between words
-        } else {
-          controller.close();
-        }
-      };
-
-      sendChunk();
-    },
-  });
-
-  return new StreamingTextResponse(stream);
+async function createStaticResponse(
+  messages: any[],
+  chatId?: string,
+): Promise<Response> {
+  // In development, use the same AI-powered approach but with static responses as fallback
+  return await createChatResponse(messages, chatId);
 }
 
 const formatMessage = (message: VercelChatMessage) => {
@@ -80,16 +30,53 @@ Your goal is to:
 - Be supportive and understanding
 
 IMPORTANT RESPONSE GUIDELINES:
+- Write like you're talking to a real person who needs comfort and reassurance
 - Vary your response length: sometimes 1-2 sentences, sometimes 2-3 short paragraphs
-- Sometimes ask questions about their feelings
-- Sometimes provide reassurance and comfort
+- Alternate between longer, more detailed responses and shorter, punchy ones
+- Sometimes ask questions about their feelings to keep the conversation flowing
+- Sometimes provide reassurance and comfort without being asked
 - Address anxiety directly when needed
-- Use a warm, supportive tone
+- Use a warm, supportive, conversational tone - like talking to a friend
 - Be concise but helpful
 - Remember previous conversation context
 - Don't repeat the same questions if already asked
 - Make each response unique and personalized
 - Adapt your tone based on the user's emotional state
+- Ask follow-up questions periodically to show you care and want to help more
+
+MESSAGE FORMATTING:
+- If your response contains multiple distinct thoughts or topics, separate them with double line breaks (\n\n)
+- This helps break up longer responses into digestible paragraphs
+- Each paragraph should focus on one main idea or technique
+- Use this formatting to make responses feel more natural and easier to read
+
+SPECIALIZED KNOWLEDGE FOR FLIGHT ANXIETY:
+- Turbulence is normal and safe - planes are designed to handle it
+- Flying is statistically safer than driving
+- Pilots and crew are highly trained professionals
+- Modern aircraft have multiple safety systems and redundancies
+- Weather delays are for safety, not because flying is dangerous
+- The sounds and sensations during flight are normal and expected
+- Breathing exercises: 4-4-6 pattern (inhale 4, hold 4, exhale 6)
+- Grounding techniques: 5-4-3-2-1 (see, feel, hear, smell, taste)
+- Distraction strategies: music, reading, conversation, games
+- Progressive muscle relaxation and mindfulness techniques
+
+FLIGHT ROUTE REASSURANCE:
+- When user mentions specific flight routes (e.g., "flying from NYC to LA", "going to London from Chicago"), acknowledge the route
+- Emphasize that major routes are incredibly common and well-established
+- Mention that pilots fly these routes frequently and are very familiar with them
+- Point out that these routes have excellent safety records and are heavily monitored
+- Reassure that air traffic control is highly experienced with these corridors
+- Note that these routes have multiple airports as alternatives if needed
+
+EMERGENCY SITUATION PROTOCOL:
+- If user mentions serious physical symptoms (heart attack, chest pain, difficulty breathing, severe pain, etc.), IMMEDIATELY advise them to seek help from flight crew
+- Always recommend contacting flight attendants for any concerning physical symptoms
+- Provide immediate calming techniques (breathing exercises) while emphasizing the need for professional help
+- Never downplay serious symptoms - always err on the side of caution
+- Use phrases like "please let a flight attendant know right away" or "the crew is trained to help with this"
+- Continue to be supportive while directing them to appropriate help
 
 {context_instruction}
 
@@ -107,6 +94,7 @@ Larry:`;
  */
 async function createChatResponse(
   messages: any[],
+  chatId?: string,
   retryCount = 0,
 ): Promise<Response> {
   try {
@@ -124,7 +112,7 @@ async function createChatResponse(
     const prompt = PromptTemplate.fromTemplate(TEMPLATE);
 
     const model = new ChatOpenAI({
-      temperature: 0.7,
+      temperature: 0.8,
       model: "gpt-4o-mini",
       maxTokens: 500,
       timeout: 30000,
@@ -134,19 +122,26 @@ async function createChatResponse(
     const outputParser = new HttpResponseOutputParser();
     const chain = prompt.pipe(model).pipe(outputParser);
 
-    // Add some randomness to make responses more varied
+    // Add some randomness to make responses more varied and human-like
+    const responseVariations = [
+      "Be more conversational and ask a follow-up question about how they're feeling.",
+      "Focus on providing practical advice with a warm, supportive tone.",
+      "Show empathy and understanding, like you're talking to a close friend.",
+      "Ask about their specific concerns and offer personalized reassurance.",
+      "Mix practical tips with emotional support and encouragement.",
+    ];
     const responseVariation =
-      Math.random() > 0.5
-        ? "Be more conversational and ask a follow-up question."
-        : "Focus on providing practical advice.";
+      responseVariations[Math.floor(Math.random() * responseVariations.length)];
 
     const stream = await chain.stream({
       chat_history: formattedPreviousMessages.join("\n"),
       input: currentMessageContent,
       context_instruction: hasSpecificMatch
-        ? `Use this specific context to help the user:\n${context}\n\n${responseVariation}`
-        : `Respond naturally based on the conversation context and user's needs.\n\n${responseVariation}`,
+        ? `The user mentioned something related to: ${context}\n\nUse this context to provide relevant, personalized advice. Write like you're comforting a friend who's anxious about flying. ${responseVariation}`
+        : `Respond naturally based on the conversation context and user's needs. Write like you're talking to a real person who needs comfort and support. ${responseVariation}`,
     });
+
+    // Messages will be saved by the client in onFinish callback
 
     return new StreamingTextResponse(stream);
   } catch (e: any) {
@@ -161,7 +156,7 @@ async function createChatResponse(
       await new Promise((resolve) =>
         setTimeout(resolve, 1000 * (retryCount + 1)),
       );
-      return createChatResponse(messages, retryCount + 1);
+      return createChatResponse(messages, chatId, retryCount + 1);
     }
 
     // Handle specific error types
@@ -190,15 +185,13 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     const messages = body.messages ?? [];
+    const chatId = body.chatId;
 
-    // Use static responses only if explicitly enabled via environment variable
-    if (process.env.USE_STATIC_RESPONSES === "true") {
-      console.log("Using static responses");
-      return createStaticResponse(messages);
+    // Use static responses in development mode
+    if (process.env.NODE_ENV === "development") {
+      return createStaticResponse(messages, chatId);
     }
-
-    console.log("Using AI responses");
-    return await createChatResponse(messages);
+    return await createChatResponse(messages, chatId);
   } catch (e: any) {
     console.error("Request parsing error:", e);
     return NextResponse.json(

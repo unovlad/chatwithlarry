@@ -2,33 +2,40 @@ import { cn } from "@/utils/cn";
 import type { Message } from "ai/react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import { formatMessageTime } from "@/utils/timeFormat";
+import { LarryIcon } from "./LarryIcon";
 
 export function ChatMessageBubble(props: {
   message: Message;
-  aiEmoji?: string;
   sources: any[];
+  showTimestamp?: boolean;
+  showAvatar?: boolean;
 }) {
   return (
     <div
       className={cn(
-        `rounded-[24px] max-w-[80%] mb-8 flex`,
+        `rounded-[24px] max-w-[80%] flex`,
         props.message.role === "user"
           ? "bg-gray-200 text-secondary-foreground px-4 py-2"
           : null,
         props.message.role === "user" ? "ml-auto" : "mr-auto",
+        props.showTimestamp ? "mb-8" : "mb-2",
       )}
     >
-      {props.message.role !== "user" && (
+      {props.message.role !== "user" && props.showAvatar && (
         <div className="mr-4 border bg-background -mt-2 rounded-full w-10 h-10 flex-shrink-0 flex items-center justify-center">
-          {props.aiEmoji}
+          <LarryIcon className="w-6 h-6" />
         </div>
+      )}
+      {props.message.role !== "user" && !props.showAvatar && (
+        <div className="mr-4 w-10 h-10 flex-shrink-0"></div>
       )}
 
       <div className="flex flex-col">
         {props.message.role === "user" ? (
           <span className="whitespace-pre-wrap">{props.message.content}</span>
         ) : (
-          <div className="prose prose-sm max-w-none">
+          <div className="prose prose-sm max-w-none bg-gray-200 px-2 py-3 rounded-lg">
             <ReactMarkdown
               remarkPlugins={[remarkGfm]}
               components={{
@@ -99,6 +106,18 @@ export function ChatMessageBubble(props: {
             </code>
           </>
         ) : null}
+
+        {/* Timestamp */}
+        {props.message.createdAt && props.showTimestamp && (
+          <div
+            className={cn(
+              "text-xs text-gray-500 mt-2",
+              props.message.role === "user" ? "text-right" : "text-left",
+            )}
+          >
+            {formatMessageTime(props.message.createdAt)}
+          </div>
+        )}
       </div>
     </div>
   );

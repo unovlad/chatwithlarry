@@ -1,8 +1,14 @@
 "use client";
 
 import React, { createContext, useContext, useEffect, useState } from "react";
-import { supabase } from "@/lib/supabaseClient";
+import { createClient } from "@/lib/supabaseClient";
 import { userService } from "@/lib/userService";
+import {
+  getAnonymousMessageCount,
+  incrementAnonymousMessageCount,
+  canSendAnonymousMessage,
+  getRemainingMessages as getAnonymousRemainingMessages,
+} from "@/lib/localStorage";
 import type { User, Chat, Message, AuthContextType } from "@/types/user";
 import { toast } from "sonner";
 
@@ -16,6 +22,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Get initial session
     const getInitialSession = async () => {
       try {
+        const supabase = createClient();
         const {
           data: { session },
         } = await supabase.auth.getSession();
@@ -36,22 +43,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Listen for auth changes
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (event: any, session: any) => {
-      try {
-        if (session?.user) {
-          // Профіль тепер створюється автоматично через trigger
-          const userProfile = await userService.getUserProfile(session.user.id);
-          setUser(userProfile);
-        } else {
+    } = createClient().auth.onAuthStateChange(
+      async (event: any, session: any) => {
+        try {
+          if (session?.user) {
+            // Профіль тепер створюється автоматично через trigger
+            const userProfile = await userService.getUserProfile(
+              session.user.id,
+            );
+            setUser(userProfile);
+          } else {
+            setUser(null);
+          }
+        } catch (error) {
+          console.error("Error handling auth state change:", error);
           setUser(null);
+        } finally {
+          setLoading(false);
         }
-      } catch (error) {
-        console.error("Error handling auth state change:", error);
-        setUser(null);
-      } finally {
-        setLoading(false);
-      }
-    });
+      },
+    );
 
     return () => subscription.unsubscribe();
   }, []);
@@ -61,7 +72,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setLoading(true);
 
       // Спочатку перевіряємо, чи існує користувач з таким email
-      const { data: existingUser } = await supabase
+      const { data: existingUser } = await createClient()
         .from("users")
         .select("id, email")
         .eq("email", email)
@@ -72,6 +83,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         throw new Error("User already exists");
       }
 
+      const supabase = createClient();
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
@@ -112,6 +124,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signIn = async (email: string, password: string) => {
     try {
       setLoading(true);
+      const supabase = createClient();
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
@@ -133,9 +146,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const signInWithGoogle = async () => {
+    try {
+      setLoading(true);
+      const supabase = createClient();
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo: `${window.location.origin}/auth/callback`,
+        },
+      });
+
+      if (error) throw error;
+    } catch (error: any) {
+      console.error("Google sign in error:", error);
+      toast.error(error.message || "Failed to sign in with Google");
+      throw error;
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const signOut = async () => {
     try {
       setLoading(true);
+      const supabase = createClient();
       const { error } = await supabase.auth.signOut();
       if (error) throw error;
 
@@ -151,28 +186,37 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const canSendMessage = (): boolean => {
-    return userService.canSendMessage(user);
+    if (user) {
+      return userService.canSendMessage(user);
+    }
+    return canSendAnonymousMessage();
   };
 
   const incrementMessageCount = async (): Promise<void> => {
-    if (!user) return;
+    if (user) {
+      try {
+        await userService.incrementMessageCount(user.id);
 
-    try {
-      await userService.incrementMessageCount(user.id);
-
-      // Update local user state
-      const updatedUser = await userService.getUserProfile(user.id);
-      if (updatedUser) {
-        setUser(updatedUser);
+        // Update local user state
+        const updatedUser = await userService.getUserProfile(user.id);
+        if (updatedUser) {
+          setUser(updatedUser);
+        }
+      } catch (error) {
+        console.error("Error incrementing message count:", error);
+        throw error;
       }
-    } catch (error) {
-      console.error("Error incrementing message count:", error);
-      throw error;
+    } else {
+      // For anonymous users, increment localStorage counter
+      incrementAnonymousMessageCount();
     }
   };
 
   const getRemainingMessages = (): number => {
-    return userService.getRemainingMessages(user);
+    if (user) {
+      return userService.getRemainingMessages(user);
+    }
+    return getAnonymousRemainingMessages();
   };
 
   const createChat = async (title: string): Promise<Chat> => {
@@ -216,7 +260,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return await userService.getChatMessages(chatId);
     } catch (error) {
       console.error("Error loading messages:", error);
-      throw error;
+      // Повертаємо порожній масив замість кидання помилки
+      return [];
     }
   };
 
@@ -225,6 +270,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     loading,
     signUp,
     signIn,
+    signInWithGoogle,
     signOut,
     canSendMessage,
     incrementMessageCount,

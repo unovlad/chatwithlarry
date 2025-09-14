@@ -1,4 +1,4 @@
-import { supabase } from "@/lib/supabaseClient";
+import { createClient } from "@/lib/supabaseClient";
 import type { User, Chat, Message } from "@/types/user";
 
 export const userService = {
@@ -62,7 +62,7 @@ export const userService = {
 
   // Get user profile
   getUserProfile: async (userId: string): Promise<User | null> => {
-    const { data, error } = await supabase
+    const { data, error } = await createClient()
       .from("users")
       .select("*")
       .eq("id", userId)
@@ -80,7 +80,7 @@ export const userService = {
     userId: string,
     updates: Partial<User>,
   ): Promise<User> => {
-    const { data, error } = await supabase
+    const { data, error } = await createClient()
       .from("users")
       .update({ ...updates, updated_at: new Date().toISOString() })
       .eq("id", userId)
@@ -94,7 +94,7 @@ export const userService = {
   // Increment message count
   incrementMessageCount: async (userId: string): Promise<void> => {
     // First get current user data
-    const { data: userData, error: fetchError } = await supabase
+    const { data: userData, error: fetchError } = await createClient()
       .from("users")
       .select("messages_used")
       .eq("id", userId)
@@ -103,7 +103,7 @@ export const userService = {
     if (fetchError) throw fetchError;
 
     // Then update with incremented value
-    const { error } = await supabase
+    const { error } = await createClient()
       .from("users")
       .update({
         messages_used: (userData.messages_used || 0) + 1,
@@ -117,7 +117,7 @@ export const userService = {
 
   // Reset monthly message count
   resetMonthlyMessages: async (userId: string): Promise<void> => {
-    const { error } = await supabase
+    const { error } = await createClient()
       .from("users")
       .update({
         messages_used: 0,
@@ -133,7 +133,7 @@ export const userService = {
 
   // Create chat
   createChat: async (userId: string, title: string): Promise<Chat> => {
-    const { data, error } = await supabase
+    const { data, error } = await createClient()
       .from("chats")
       .insert([
         {
@@ -144,13 +144,16 @@ export const userService = {
       .select()
       .single();
 
-    if (error) throw error;
+    if (error) {
+      console.error("Error in userService.createChat:", error);
+      throw error;
+    }
     return data;
   },
 
   // Get user chats
   getUserChats: async (userId: string): Promise<Chat[]> => {
-    const { data, error } = await supabase
+    const { data, error } = await createClient()
       .from("chats")
       .select("*")
       .eq("user_id", userId)
@@ -162,13 +165,22 @@ export const userService = {
 
   // Get chat messages
   getChatMessages: async (chatId: string): Promise<Message[]> => {
-    const { data, error } = await supabase
+    const { data, error } = await createClient()
       .from("messages")
       .select("*")
       .eq("chat_id", chatId)
       .order("created_at", { ascending: true });
 
-    if (error) throw error;
+    if (error) {
+      // Якщо помилка (наприклад, чат не існує або немає доступу), повертаємо порожній масив
+      if (
+        error.code === "PGRST116" ||
+        error.message?.includes("permission denied")
+      ) {
+        return [];
+      }
+      throw error;
+    }
     return data || [];
   },
 
@@ -178,7 +190,7 @@ export const userService = {
     role: "user" | "assistant" | "system",
     content: string,
   ): Promise<Message> => {
-    const { data, error } = await supabase
+    const { data, error } = await createClient()
       .from("messages")
       .insert([
         {
@@ -191,6 +203,13 @@ export const userService = {
       .single();
 
     if (error) throw error;
+
+    // Оновлюємо updated_at в чаті
+    await createClient()
+      .from("chats")
+      .update({ updated_at: new Date().toISOString() })
+      .eq("id", chatId);
+
     return data;
   },
 
@@ -200,7 +219,7 @@ export const userService = {
     userId: string,
     title: string,
   ): Promise<Chat> => {
-    const { data, error } = await supabase
+    const { data, error } = await createClient()
       .from("chats")
       .update({
         title,
@@ -217,7 +236,7 @@ export const userService = {
 
   // Delete chat
   deleteChat: async (chatId: string, userId: string): Promise<void> => {
-    const { error } = await supabase
+    const { error } = await createClient()
       .from("chats")
       .delete()
       .eq("id", chatId)

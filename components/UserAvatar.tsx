@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import {
@@ -10,7 +11,13 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { User, LogOut, Settings, MessageCircle } from "lucide-react";
+import {
+  User,
+  LogOut,
+  Settings,
+  MessageCircle,
+  ArrowUpRight,
+} from "lucide-react";
 import { AuthModal } from "@/components/auth/AuthModal";
 
 export function UserAvatar() {
@@ -96,7 +103,12 @@ export function UserAvatar() {
 
         <DropdownMenuSeparator />
 
-        <div className="px-2 py-1">
+        <div className="px-2 py-1 flex flex-col gap-2">
+          <div className="text-xs text-gray-500 mt-1">
+            {user.subscription_plan === "free" && "Free Plan"}
+            {user.subscription_plan === "premium" && "Premium Plan"}
+            {user.subscription_plan === "enterprise" && "Enterprise Plan"}
+          </div>
           <div className="flex items-center gap-2 text-xs text-gray-600">
             <MessageCircle className="w-3 h-3" />
             <span>
@@ -105,19 +117,18 @@ export function UserAvatar() {
                 : `${remainingMessages} messages left`}
             </span>
           </div>
-          <div className="text-xs text-gray-500 mt-1">
-            {user.subscription_plan === "free" && "Free Plan"}
-            {user.subscription_plan === "premium" && "Premium Plan"}
-            {user.subscription_plan === "enterprise" && "Enterprise Plan"}
-          </div>
+          <Button variant="active" size="sm">
+            <Link href="/dashboard">Upgrade</Link>
+          </Button>
         </div>
 
         <DropdownMenuSeparator />
-
-        <DropdownMenuItem className="cursor-pointer">
-          <User className="mr-2 h-4 w-4" />
-          <span>Profile</span>
-        </DropdownMenuItem>
+        <Link href="/chat">
+          <DropdownMenuItem className="cursor-pointer">
+            <MessageCircle className="mr-2 h-4 w-4" />
+            <span>My Chats</span>
+          </DropdownMenuItem>
+        </Link>
 
         <DropdownMenuItem className="cursor-pointer">
           <Settings className="mr-2 h-4 w-4" />

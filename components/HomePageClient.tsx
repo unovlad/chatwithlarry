@@ -1,24 +1,24 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { StartChatWindow } from "@/components/StartChatWindow";
-import { nanoid } from "nanoid";
+import { Footer } from "@/components/Footer";
+import { createChatAction } from "@/lib/chatActions";
 
 export function HomePageClient() {
-  const router = useRouter();
-
-  const handleStartChat = (message?: string) => {
-    // Генеруємо унікальний ID сесії в клієнтському компоненті
-    const sessionId = nanoid();
-
-    // Зберігаємо початкове повідомлення в localStorage для цієї сесії
-    if (message) {
-      localStorage.setItem(`larry-initial-message-${sessionId}`, message);
+  const handleStartChat = async (message?: string) => {
+    try {
+      console.log("HomePageClient: Starting chat with message:", message);
+      await createChatAction(message);
+    } catch (error) {
+      console.error("Error creating chat:", error);
+      // Тут можна додати toast notification про помилку
     }
-
-    // Переходимо на сторінку чату з ID сесії
-    router.push(`/chat/${sessionId}`);
   };
 
-  return <StartChatWindow onStartChat={handleStartChat} />;
+  return (
+    <>
+      <StartChatWindow onStartChat={handleStartChat} />
+      <Footer />
+    </>
+  );
 }
