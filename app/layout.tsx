@@ -7,7 +7,6 @@ import { NuqsAdapter } from "nuqs/adapters/next/app";
 import { AuthProvider } from "@/contexts/AuthContext";
 
 import HeaderComp from "@/components/layout/header";
-import BlueGradientBackground from "@/components/BlueGradientBackground";
 
 const inter = Inter({ subsets: ["latin"] });
 

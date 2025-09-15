@@ -4,6 +4,11 @@ const withBundleAnalyzer = require("@next/bundle-analyzer")({
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // Ensure proper module resolution
+  experimental: {
+    esmExternals: true,
+  },
+  
   // Global security headers
   async headers() {
     return [
