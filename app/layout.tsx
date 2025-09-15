@@ -6,7 +6,7 @@ import { NuqsAdapter } from "nuqs/adapters/next/app";
 
 import { AuthProvider } from "@/contexts/AuthContext";
 
-import HeaderComp from "../components/layout/header";
+import MyHeader from "@/components/ui/myheader";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -65,7 +65,7 @@ export default function RootLayout({
         <NuqsAdapter>
           <AuthProvider>
             <div className="min-h-screen bg-background flex flex-col">
-              <HeaderComp />
+              <MyHeader />
               <main className="flex-1 relative">{children}</main>
             </div>
 
