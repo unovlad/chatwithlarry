@@ -8,7 +8,7 @@ const nextConfig = {
   experimental: {
     esmExternals: true,
   },
-  
+
   // Global security headers
   async headers() {
     return [
