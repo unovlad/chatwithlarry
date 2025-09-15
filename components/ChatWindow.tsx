@@ -2,7 +2,7 @@
 
 import { type Message } from "ai";
 import { useChat } from "ai/react";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import type { FormEvent, ReactNode } from "react";
 import { toast } from "sonner";
 import { StickToBottom, useStickToBottomContext } from "use-stick-to-bottom";
@@ -11,7 +11,7 @@ import { ChatMessageBubble } from "@/components/ChatMessageBubble";
 import { IntermediateStep } from "./IntermediateStep";
 import { TypingIndicator } from "./TypingIndicator";
 import { Button } from "./ui/button";
-import { ArrowDown, LoaderCircle, Paperclip } from "lucide-react";
+import { ArrowDown, LoaderCircle, Paperclip, Send } from "lucide-react";
 import { Checkbox } from "./ui/checkbox";
 import { UploadDocumentsForm } from "./UploadDocumentsForm";
 import {
@@ -25,14 +25,8 @@ import {
 import { cn } from "@/utils/cn";
 import { AuthCTA } from "./AuthCTA";
 import { useAuth } from "@/contexts/AuthContext";
+import { useRouter } from "next/navigation";
 import type { Chat, Message as DBMessage } from "@/types/user";
-import {
-  getGuestSession,
-  incrementGuestMessageCount,
-  setGuestChatId,
-  getRemainingMessages as getGuestRemainingMessages,
-  isGuestSessionActive,
-} from "@/lib/guestStorage";
 
 function ChatMessages(props: {
   messages: Message[];
@@ -64,19 +58,56 @@ function ChatMessages(props: {
   // Розбиваємо всі повідомлення
   const processedMessages = props.messages.flatMap(splitMessageByParagraphs);
 
+  // Фільтруємо дублікати першого повідомлення від користувача
+  const filteredMessages = useMemo(() => {
+    if (processedMessages.length < 2) return processedMessages;
+
+    const firstMessage = processedMessages[0];
+    const secondMessage = processedMessages[1];
+
+    // Якщо перші два повідомлення від користувача ідентичні, приховуємо перше
+    if (
+      firstMessage.role === "user" &&
+      secondMessage.role === "user" &&
+      firstMessage.content === secondMessage.content
+    ) {
+      return processedMessages.slice(1);
+    }
+
+    return processedMessages;
+  }, [processedMessages]);
+
   // Автоскрол при додаванні нових повідомлень
   useEffect(() => {
-    const currentMessagesLength = processedMessages.length;
+    const currentMessagesLength = filteredMessages.length;
 
     if (currentMessagesLength > prevMessagesLengthRef.current) {
       // Є нові повідомлення, скролимо вниз
       setTimeout(() => {
         scrollToBottom();
-      }, 100);
+      }, 150);
     }
 
     prevMessagesLengthRef.current = currentMessagesLength;
-  }, [processedMessages.length, scrollToBottom]);
+  }, [filteredMessages.length, scrollToBottom]);
+
+  // Автоскрол при зміні контенту повідомлень (streaming)
+  const prevContentRef = useRef("");
+  useEffect(() => {
+    const currentContent = filteredMessages.map((m) => m.content).join("");
+
+    if (
+      currentContent !== prevContentRef.current &&
+      prevContentRef.current !== ""
+    ) {
+      // Контент змінився (streaming), скролимо вниз
+      setTimeout(() => {
+        scrollToBottom();
+      }, 100);
+    }
+
+    prevContentRef.current = currentContent;
+  }, [filteredMessages, scrollToBottom]);
 
   // Автоскрол коли зникає TypingIndicator
   useEffect(() => {
@@ -84,13 +115,13 @@ function ChatMessages(props: {
       // TypingIndicator зник, скролимо вниз
       setTimeout(() => {
         scrollToBottom();
-      }, 50);
+      }, 100);
     }
   }, [props.isLoading, scrollToBottom]);
 
   return (
     <div className="flex flex-col max-w-[768px] mx-auto pb-2 w-full">
-      {processedMessages.map((m, i) => {
+      {filteredMessages.map((m, i) => {
         if (m.role === "system") {
           return <IntermediateStep key={m.id} message={m} />;
         }
@@ -99,12 +130,12 @@ function ChatMessages(props: {
 
         // Перевіряємо чи це останній параграф в серії повідомлень від того ж відправника
         const isLastInSeries =
-          i === processedMessages.length - 1 ||
-          processedMessages[i + 1]?.role !== m.role;
+          i === filteredMessages.length - 1 ||
+          filteredMessages[i + 1]?.role !== m.role;
 
         // Перевіряємо чи це перший параграф в серії повідомлень від того ж відправника
         const isFirstInSeries =
-          i === 0 || processedMessages[i - 1]?.role !== m.role;
+          i === 0 || filteredMessages[i - 1]?.role !== m.role;
 
         return (
           <ChatMessageBubble
@@ -147,31 +178,22 @@ export function ChatInput(props: {
       }}
       className={cn("flex w-full flex-col", props.className)}
     >
-      <div className="border border-input bg-background rounded-lg flex flex-col gap-2 max-w-[768px] w-full mx-auto">
+      <div className="border border-input bg-background rounded-lg flex items-center gap-2 max-w-[768px] w-full mx-auto p-2">
         <input
           value={props.value}
           placeholder={props.placeholder}
           onChange={props.onChange}
-          className="border-none outline-none bg-transparent p-4"
+          className="flex-1 border-none outline-none bg-transparent px-3 py-2"
         />
-
-        <div className="flex justify-between ml-4 mr-2 mb-2">
-          <div className="flex gap-3">{props.children}</div>
-
-          <div className="flex gap-2 self-end">
-            {props.actions}
-            <Button type="submit" className="self-end" disabled={disabled}>
-              {props.loading ? (
-                <span role="status" className="flex justify-center">
-                  <LoaderCircle className="animate-spin" />
-                  <span className="sr-only">Loading...</span>
-                </span>
-              ) : (
-                <span>Send</span>
-              )}
-            </Button>
-          </div>
-        </div>
+        {props.children}
+        {props.actions}
+        <Button type="submit" disabled={disabled || !props.value.trim()}>
+          {props.loading ? (
+            <LoaderCircle className="h-4 w-4 animate-spin" />
+          ) : (
+            <Send className="h-4 w-4" />
+          )}
+        </Button>
       </div>
     </form>
   );
@@ -221,13 +243,15 @@ export function ChatLayout(props: { content: ReactNode; footer: ReactNode }) {
   return (
     <StickToBottom>
       <StickyToBottomContent
-        className="absolute inset-0"
-        contentClassName="py-8 px-2"
+        className="h-full"
+        contentClassName="py-8 px-2 pb-32"
         content={props.content}
         footer={
-          <div className="sticky bottom-8 px-2">
-            <ScrollToBottom className="absolute bottom-full left-1/2 -translate-x-1/2 mb-4" />
-            {props.footer}
+          <div className="fixed bottom-0 left-0 right-0 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 p-4 z-10">
+            <div className="max-w-[768px] mx-auto">
+              <ScrollToBottom className="absolute bottom-full left-1/2 -translate-x-1/2 mb-4" />
+              {props.footer}
+            </div>
           </div>
         }
       />
@@ -242,7 +266,6 @@ export function ChatWindow(props: {
   showIngestForm?: boolean;
   showIntermediateStepsToggle?: boolean;
   sessionId?: string;
-  isGuestChat?: boolean;
 }) {
   const [showIntermediateSteps, setShowIntermediateSteps] = useState(
     !!props.showIntermediateStepsToggle,
@@ -264,79 +287,91 @@ export function ChatWindow(props: {
     getRemainingMessages,
     loadMessages,
   } = useAuth();
+  const router = useRouter();
 
   const [showAuthCTA, setShowAuthCTA] = useState(false);
   const [isHydrated, setIsHydrated] = useState(false);
   const [currentChatId, setCurrentChatId] = useState<string | null>(null);
-  const [guestSession, setGuestSession] = useState(getGuestSession());
   const [isWaitingForResponse, setIsWaitingForResponse] = useState(false);
+  const [hasLoadedChat, setHasLoadedChat] = useState(false);
+  const [hasSentAutoMessage, setHasSentAutoMessage] = useState(false);
 
   useEffect(() => {
     setIsHydrated(true);
 
-    console.log(
-      "ChatWindow useEffect - sessionId:",
-      props.sessionId,
-      "isGuestChat:",
-      props.isGuestChat,
-    );
+    console.log("ChatWindow useEffect - sessionId:", props.sessionId);
+  }, [props.sessionId]);
 
-    // Якщо це гостьовий чат, встановлюємо chatId в localStorage
-    if (props.isGuestChat && props.sessionId) {
-      console.log("Setting guest chat ID:", props.sessionId);
-      setGuestChatId(props.sessionId);
-      setCurrentChatId(props.sessionId);
-    } else if (props.sessionId) {
-      console.log("Setting regular chat ID:", props.sessionId);
+  // Редірект для неавторизованих користувачів
+  useEffect(() => {
+    if (isHydrated && !authLoading && !user) {
+      console.log("ChatWindow: User not authenticated, redirecting to /");
+      router.push("/");
+    }
+  }, [isHydrated, authLoading, user, router]);
+
+  // Встановлюємо chatId
+  useEffect(() => {
+    if (props.sessionId) {
+      console.log("Setting chat ID:", props.sessionId);
       setCurrentChatId(props.sessionId);
     }
-  }, [props.sessionId, props.isGuestChat]);
+  }, [props.sessionId]);
 
-  const chat = useChat({
-    api: props.endpoint,
-    body: {
-      chatId: currentChatId,
-    },
-    onResponse(response) {
-      // Приховуємо typing indicator коли починаємо отримувати відповідь
-      setIsWaitingForResponse(false);
+  // Стабілізуємо параметри useChat
+  const chatConfig = useMemo(
+    () => ({
+      api: props.endpoint,
+      body: {
+        chatId: currentChatId || props.sessionId,
+      },
+      id: currentChatId || props.sessionId,
+    }),
+    [props.endpoint, currentChatId, props.sessionId],
+  );
 
-      const sourcesHeader = response.headers.get("x-sources");
-      const sources = sourcesHeader
-        ? JSON.parse(Buffer.from(sourcesHeader, "base64").toString("utf8"))
-        : [];
+  const handleResponse = useCallback((response: Response) => {
+    // Приховуємо typing indicator коли починаємо отримувати відповідь
+    setIsWaitingForResponse(false);
 
-      const messageIndexHeader = response.headers.get("x-message-index");
-      if (sources.length && messageIndexHeader !== null) {
-        setSourcesForMessages({
-          ...sourcesForMessages,
-          [messageIndexHeader]: sources,
-        });
-      }
-    },
-    streamMode: "text",
-    onError: (e) => {
-      console.error("Chat error:", e);
+    const sourcesHeader = response.headers.get("x-sources");
+    const sources = sourcesHeader
+      ? JSON.parse(Buffer.from(sourcesHeader, "base64").toString("utf8"))
+      : [];
 
-      // Приховуємо typing indicator при помилці
-      setIsWaitingForResponse(false);
+    const messageIndexHeader = response.headers.get("x-message-index");
+    if (sources.length && messageIndexHeader !== null) {
+      setSourcesForMessages((prev) => ({
+        ...prev,
+        [messageIndexHeader]: sources,
+      }));
+    }
+  }, []);
 
-      // Handle specific error types
-      if (e.message?.includes("Connection interrupted")) {
-        toast.error("Connection lost", {
-          description: "Please try again in a moment.",
-        });
-      } else if (e.message?.includes("Rate limit")) {
-        toast.error("Too many requests", {
-          description: "Please wait a moment before trying again.",
-        });
-      } else {
-        toast.error("Something went wrong", {
-          description: "Please try again.",
-        });
-      }
-    },
-    onFinish: async (message) => {
+  const handleError = useCallback((e: Error) => {
+    console.error("Chat error:", e);
+
+    // Приховуємо typing indicator при помилці
+    setIsWaitingForResponse(false);
+
+    // Handle specific error types
+    if (e.message?.includes("Connection interrupted")) {
+      toast.error("Connection lost", {
+        description: "Please try again in a moment.",
+      });
+    } else if (e.message?.includes("Rate limit")) {
+      toast.error("Too many requests", {
+        description: "Please wait a moment before trying again.",
+      });
+    } else {
+      toast.error("Something went wrong", {
+        description: "Please try again.",
+      });
+    }
+  }, []);
+
+  const handleFinish = useCallback(
+    async (message: any) => {
       // Приховуємо typing indicator коли відповідь завершена
       setIsWaitingForResponse(false);
 
@@ -351,25 +386,31 @@ export function ChatWindow(props: {
         currentChatId,
         "chatIdForSave:",
         chatIdForSave,
-        "isGuestChat:",
-        props.isGuestChat,
+        "message content length:",
+        message.content.length,
       );
 
       // Зберігаємо відповідь асистента в БД
-      if (chatIdForSave) {
+      if (chatIdForSave && user) {
         try {
           console.log("Saving assistant message to database:", message.content);
-          if (user) {
-            // Для авторизованих користувачів
-            await saveMessage(chatIdForSave, "assistant", message.content);
-          } else if (props.isGuestChat) {
-            // Для гостьових сесій - зберігаємо через guest service
-            const { addGuestMessage } = await import("@/lib/guestService");
-            await addGuestMessage(chatIdForSave, message.content, "assistant");
-          }
+          await saveMessage(chatIdForSave, "assistant", message.content);
           console.log("Assistant message saved successfully to database");
+
+          // Віднімаємо токени після успішного отримання відповіді
+          console.log("Deducting tokens after receiving assistant response");
+          try {
+            await incrementMessageCount();
+            console.log("Tokens deducted successfully");
+          } catch (error) {
+            console.error("Error deducting tokens:", error);
+            toast.error(
+              "Failed to update message count. Please refresh the page.",
+            );
+          }
         } catch (error) {
           console.error("Error saving assistant message to database:", error);
+          // Не віднімаємо токени якщо не вдалося зберегти повідомлення
         }
       } else {
         console.log(
@@ -380,76 +421,55 @@ export function ChatWindow(props: {
         );
       }
     },
+    [currentChatId, user, props.sessionId, saveMessage, incrementMessageCount],
+  );
+
+  const chat = useChat({
+    ...chatConfig,
+    onResponse: handleResponse,
+    streamMode: "text",
+    onError: handleError,
+    onFinish: handleFinish,
   });
 
-  // Автоскрол при зміні повідомлень
-  useEffect(() => {
-    if (chat.messages.length > 0) {
-      // Невелика затримка для того, щоб DOM оновився
-      setTimeout(() => {
-        // Використовуємо StickToBottom компонент для скролу
-        const scrollContainer = document.querySelector(
-          "[data-stick-to-bottom]",
-        );
-        if (scrollContainer) {
-          scrollContainer.scrollTop = scrollContainer.scrollHeight;
-        }
-      }, 100);
+  const loadChatFromDatabase = useCallback(async () => {
+    console.log(
+      "loadChatFromDatabase called - user:",
+      !!user,
+      "sessionId:",
+      props.sessionId,
+    );
+    if (!user || !props.sessionId) {
+      console.log("loadChatFromDatabase: Missing user or sessionId, returning");
+      return;
     }
-  }, [chat.messages.length]);
-
-  // Завантажуємо існуючий чат або відправляємо початкове повідомлення
-  useEffect(() => {
-    // Очікуємо завершення авторизації перед завантаженням
-    if (isHydrated && !authLoading && chat.messages.length === 0) {
-      console.log(
-        "Loading chat - user:",
-        !!user,
-        "authLoading:",
-        authLoading,
-        "sessionId:",
-        props.sessionId,
-        "isGuestChat:",
-        props.isGuestChat,
-        "currentChatId:",
-        currentChatId,
-      );
-
-      if (props.sessionId) {
-        // Тепер sessionId - це UUID чату з БД, доступ перевірено на сервері
-        if (user) {
-          // Завантажуємо з БД для авторизованих користувачів
-          console.log("Loading from database for chatId:", props.sessionId);
-          loadChatFromDatabase();
-        } else if (props.isGuestChat) {
-          // Завантажуємо з БД для гостьових сесій
-          console.log(
-            "Loading guest chat from database for chatId:",
-            props.sessionId,
-          );
-          loadGuestChatFromDatabase();
-        }
-      } else {
-        console.log("No sessionId provided");
-      }
-    }
-  }, [
-    props.sessionId,
-    props.isGuestChat,
-    chat.messages.length,
-    chat,
-    isHydrated,
-    authLoading,
-    user,
-    currentChatId,
-  ]);
-
-  const loadChatFromDatabase = async () => {
-    if (!user || !props.sessionId) return;
 
     try {
       console.log("Loading chat from database:", props.sessionId);
-      const messages = await loadMessages(props.sessionId);
+
+      // Спочатку намагаємося завантажити через API
+      let messages = [];
+      try {
+        console.log("Trying to load messages via API...");
+        const response = await fetch(`/api/chat/${props.sessionId}/messages`, {
+          method: "GET",
+          credentials: "include",
+        });
+
+        if (response.ok) {
+          const { messages: apiMessages } = await response.json();
+          messages = apiMessages;
+          console.log("Messages loaded via API:", messages.length);
+        } else {
+          console.log("API failed, falling back to loadMessages...");
+          messages = await loadMessages(props.sessionId);
+        }
+      } catch (apiError) {
+        console.log("API error, falling back to loadMessages:", apiError);
+        messages = await loadMessages(props.sessionId);
+      }
+
+      console.log("Messages loaded from database:", messages?.length || 0);
 
       if (messages && messages.length > 0) {
         console.log("Found messages in database:", messages.length);
@@ -465,12 +485,27 @@ export function ChatWindow(props: {
 
         // Перевіряємо чи останнє повідомлення від користувача (без відповіді AI)
         const lastMessage = messages[messages.length - 1];
-        if (lastMessage.role === "user") {
-          console.log("Last message is from user, sending to AI...");
+        if (lastMessage.role === "user" && !hasSentAutoMessage) {
+          console.log(
+            "Last message is from user, sending to AI for response...",
+          );
+          setHasSentAutoMessage(true);
           // Відправляємо запит до AI для отримання відповіді
-          setTimeout(() => {
-            chat.reload();
+          setTimeout(async () => {
+            try {
+              console.log("Sending auto-message to AI:", lastMessage.content);
+              // Відправляємо повідомлення напряму через append
+              await chat.append({
+                role: "user",
+                content: lastMessage.content,
+              });
+              console.log("Auto-message sent successfully");
+            } catch (error) {
+              console.error("Error sending message to AI:", error);
+            }
           }, 100);
+        } else {
+          console.log("Chat loaded from database, ready for user interaction");
         }
         return;
       } else {
@@ -480,77 +515,47 @@ export function ChatWindow(props: {
       }
     } catch (error) {
       console.error("Error loading chat from database:", error);
-      // Для помилок просто встановлюємо currentChatId
+      // Для помилок просто встановлюємо currentChatId і показуємо порожній чат
+      console.log("Setting currentChatId despite error:", props.sessionId);
       setCurrentChatId(props.sessionId);
     }
-  };
+  }, [user, props.sessionId, hasSentAutoMessage, chat, loadMessages]);
 
-  const loadGuestChatFromDatabase = async () => {
-    if (!props.sessionId) return;
-
-    try {
-      console.log("Loading guest chat from database:", props.sessionId);
-      const { getGuestChatMessages } = await import("@/lib/guestService");
-      const messages = await getGuestChatMessages(props.sessionId);
-
-      console.log("Raw messages from database:", messages);
-
-      if (messages && messages.length > 0) {
-        console.log("Found guest messages in database:", messages.length);
-        // Конвертуємо повідомлення з БД в формат Vercel AI
-        const vercelMessages = messages.map((msg: any) => ({
-          id: msg.id,
-          role: msg.role,
-          content: msg.content,
-          createdAt: new Date(msg.created_at),
-        }));
-        console.log("Converted messages for chat:", vercelMessages);
-        chat.setMessages(vercelMessages);
-        setCurrentChatId(props.sessionId);
-
-        // Перевіряємо чи останнє повідомлення від користувача (без відповіді AI)
-        const lastMessage = messages[messages.length - 1];
-        if (lastMessage.role === "user") {
-          console.log("Last guest message is from user, sending to AI...");
-          // Відправляємо запит до AI для отримання відповіді
-          setTimeout(() => {
-            chat.reload();
-          }, 100);
-        }
-        return;
-      } else {
-        console.log(
-          "No guest messages found in database for chat:",
-          props.sessionId,
-        );
-        // Якщо чат існує, але немає повідомлень, встановлюємо currentChatId
-        setCurrentChatId(props.sessionId);
-      }
-    } catch (error) {
-      console.error("Error loading guest chat from database:", error);
-      // Для помилок просто встановлюємо currentChatId
-      setCurrentChatId(props.sessionId);
+  // Завантажуємо існуючий чат тільки один раз
+  useEffect(() => {
+    // Завантажуємо чат тільки один раз після авторизації
+    if (
+      isHydrated &&
+      !authLoading &&
+      user &&
+      props.sessionId &&
+      !hasLoadedChat
+    ) {
+      console.log("Loading chat from database for chatId:", props.sessionId);
+      setHasLoadedChat(true);
+      loadChatFromDatabase();
     }
-  };
+  }, [
+    isHydrated,
+    authLoading,
+    user,
+    props.sessionId,
+    hasLoadedChat,
+    loadChatFromDatabase,
+  ]);
 
   async function sendMessage(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     if (chat.isLoading || intermediateStepsLoading) return;
 
-    // Перевіряємо ліміт повідомлень
-    let canSend = false;
-    if (user) {
-      canSend = canSendMessage();
-    } else if (props.isGuestChat) {
-      // Для гостьових сесій перевіряємо localStorage
-      const updatedGuestSession = getGuestSession();
-      canSend = updatedGuestSession.canSendMessage;
-      setGuestSession(updatedGuestSession);
-    } else {
-      canSend = true; // Для нових користувачів без сесії
+    // Перевіряємо чи користувач авторизований
+    if (!user) {
+      toast.error("Please sign in to continue the conversation.");
+      return;
     }
 
-    if (!canSend) {
+    // Перевіряємо ліміт повідомлень
+    if (!canSendMessage()) {
       setShowAuthCTA(true);
       toast.error(
         "You've reached the limit of messages. Please sign up to continue.",
@@ -565,18 +570,9 @@ export function ChatWindow(props: {
       chatId = props.sessionId;
       setCurrentChatId(chatId);
       console.log("Set currentChatId from sessionId:", chatId);
-    } else if (props.isGuestChat && props.sessionId && !chatId) {
-      chatId = props.sessionId;
-      setCurrentChatId(chatId);
     }
 
-    // Збільшуємо лічильник повідомлень
-    if (user) {
-      incrementMessageCount();
-    } else if (props.isGuestChat) {
-      incrementGuestMessageCount();
-      setGuestSession(getGuestSession());
-    }
+    // Токени будуть відніматися після отримання відповіді від асистента
 
     if (!showIntermediateSteps) {
       // Зберігаємо повідомлення користувача в БД перед відправкою
@@ -587,16 +583,8 @@ export function ChatWindow(props: {
             chat.input,
             "chatId:",
             chatId,
-            "isGuestChat:",
-            props.isGuestChat,
           );
-          if (user) {
-            await saveMessage(chatId, "user", chat.input);
-          } else if (props.isGuestChat) {
-            const { addGuestMessage } = await import("@/lib/guestService");
-            await addGuestMessage(chatId, chat.input, "user");
-            console.log("Guest user message saved successfully");
-          }
+          await saveMessage(chatId, "user", chat.input);
         } catch (error) {
           console.error("Error saving user message:", error);
         }
@@ -606,7 +594,10 @@ export function ChatWindow(props: {
 
       // Показуємо typing indicator перед відправкою
       setIsWaitingForResponse(true);
+      console.log("Sending user message via handleSubmit:", chat.input);
       chat.handleSubmit(e);
+      // Очищаємо input після відправки
+      chat.setInput("");
       return;
     }
 
@@ -617,21 +608,17 @@ export function ChatWindow(props: {
     if (chatId) {
       try {
         console.log("Saving user message to database:", chat.input);
-        if (user) {
-          await saveMessage(chatId, "user", chat.input);
-        } else if (props.isGuestChat) {
-          const { addGuestMessage } = await import("@/lib/guestService");
-          await addGuestMessage(chatId, chat.input, "user");
-        }
+        await saveMessage(chatId, "user", chat.input);
       } catch (error) {
         console.error("Error saving user message:", error);
       }
     }
 
+    const userMessage = chat.input;
     chat.setInput("");
     const messagesWithUserReply = chat.messages.concat({
       id: chat.messages.length.toString(),
-      content: chat.input,
+      content: userMessage,
       role: "user",
       createdAt: new Date(),
     });
@@ -702,10 +689,42 @@ export function ChatWindow(props: {
         createdAt: new Date(),
       },
     ]);
+
+    // Зберігаємо відповідь асистента в БД
+    if (chatId) {
+      try {
+        console.log(
+          "Saving assistant message to database (intermediate steps):",
+          responseMessages[responseMessages.length - 1].content,
+        );
+        await saveMessage(
+          chatId,
+          "assistant",
+          responseMessages[responseMessages.length - 1].content,
+        );
+        console.log("Assistant message saved successfully to database");
+
+        // Віднімаємо токени після успішного отримання відповіді з intermediate steps
+        console.log(
+          "ChatWindow: Deducting tokens after receiving assistant response with intermediate steps",
+        );
+        try {
+          await incrementMessageCount();
+          console.log("ChatWindow: Tokens deducted successfully");
+        } catch (error) {
+          console.error("ChatWindow: Error deducting tokens:", error);
+          toast.error(
+            "Failed to update message count. Please refresh the page.",
+          );
+        }
+      } catch (error) {
+        console.error("Error saving assistant message to database:", error);
+      }
+    }
   }
 
   return (
-    <div className="flex flex-col h-full p-4">
+    <div className="flex flex-col h-full">
       <ChatLayout
         content={
           showAuthCTA && isHydrated ? (
@@ -718,13 +737,8 @@ export function ChatWindow(props: {
               />
               <div className="">
                 <AuthCTA
-                  remainingMessages={
-                    user
-                      ? getRemainingMessages()
-                      : props.isGuestChat
-                        ? getGuestRemainingMessages()
-                        : 0
-                  }
+                  remainingMessages={getRemainingMessages()}
+                  context="limit"
                 />
               </div>
             </div>
@@ -745,24 +759,8 @@ export function ChatWindow(props: {
             onChange={chat.handleInputChange}
             onSubmit={sendMessage}
             loading={chat.isLoading || intermediateStepsLoading}
-            placeholder={props.placeholder ?? "What's it like to be a pirate?"}
+            placeholder={props.placeholder ?? "Chat with Larry..."}
           >
-            {!showAuthCTA && isHydrated && (
-              <>
-                {user && user.subscription_plan === "free" && (
-                  <div className="text-xs text-gray-500">
-                    {getRemainingMessages()} free message
-                    {getRemainingMessages() === 1 ? "" : "s"} remaining
-                  </div>
-                )}
-                {props.isGuestChat && !user && (
-                  <div className="text-xs text-gray-500">
-                    {getGuestRemainingMessages()} guest message
-                    {getGuestRemainingMessages() === 1 ? "" : "s"} remaining
-                  </div>
-                )}
-              </>
-            )}
             {props.showIngestForm && (
               <Dialog>
                 <DialogTrigger asChild>

@@ -38,6 +38,32 @@ export async function middleware(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
+  // Якщо користувач авторизований, додаємо його профіль до headers для швидкого доступу
+  if (user) {
+    try {
+      const { data: profile } = await supabase
+        .from("users")
+        .select("*")
+        .eq("id", user.id)
+        .single();
+
+      if (profile) {
+        // Додаємо профіль до headers для використання в API routes
+        const requestHeaders = new Headers(request.headers);
+        requestHeaders.set("x-user-profile", JSON.stringify(profile));
+
+        supabaseResponse = NextResponse.next({
+          request: {
+            headers: requestHeaders,
+          },
+        });
+      }
+    } catch (error) {
+      // Якщо не можемо отримати профіль, продовжуємо без нього
+      console.error("Middleware: Failed to get user profile:", error);
+    }
+  }
+
   // Protected routes that require authentication
   const protectedRoutes = ["/dashboard", "/profile", "/settings"];
   const isProtectedRoute = protectedRoutes.some((route) =>
@@ -63,13 +89,14 @@ export async function middleware(request: NextRequest) {
     return supabaseResponse;
   }
 
-  // Redirect authenticated users away from auth pages
+  // Redirect authenticated users away from auth pages (except callback)
   const authRoutes = ["/auth"];
   const isAuthRoute = authRoutes.some((route) =>
     request.nextUrl.pathname.startsWith(route),
   );
+  const isAuthCallback = request.nextUrl.pathname === "/auth/callback";
 
-  if (isAuthRoute && user) {
+  if (isAuthRoute && user && !isAuthCallback) {
     const url = request.nextUrl.clone();
     url.pathname = "/";
     return NextResponse.redirect(url);

@@ -18,12 +18,9 @@ import {
   MessageCircle,
   ArrowUpRight,
 } from "lucide-react";
-import { AuthModal } from "@/components/auth/AuthModal";
 
 export function UserAvatar() {
-  const { user, signOut, getRemainingMessages } = useAuth();
-  const [showAuthModal, setShowAuthModal] = useState(false);
-  const [authMode, setAuthMode] = useState<"signin" | "signup">("signup");
+  const { user, signOut, getRemainingMessages, openAuthModal } = useAuth();
 
   const handleSignOut = async () => {
     try {
@@ -34,13 +31,11 @@ export function UserAvatar() {
   };
 
   const handleSignIn = () => {
-    setAuthMode("signin");
-    setShowAuthModal(true);
+    openAuthModal("signin");
   };
 
   const handleSignUp = () => {
-    setAuthMode("signup");
-    setShowAuthModal(true);
+    openAuthModal("signup");
   };
 
   if (!user) {
@@ -63,12 +58,6 @@ export function UserAvatar() {
             Sign Up
           </Button>
         </div>
-
-        <AuthModal
-          isOpen={showAuthModal}
-          onClose={() => setShowAuthModal(false)}
-          defaultMode={authMode}
-        />
       </>
     );
   }
@@ -85,12 +74,19 @@ export function UserAvatar() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button
-          variant="ghost"
-          className="relative h-8 w-8 rounded-full bg-blue-100 hover:bg-blue-200"
-        >
-          <span className="text-sm font-medium text-blue-700">{initials}</span>
-        </Button>
+        <div className="flex items-center gap-2">
+          <p className="hidden sm:block text-sm text-gray-600">
+            Welcome, {displayName}
+          </p>
+          <Button
+            variant="ghost"
+            className="relative h-8 w-8 rounded-full bg-blue-100 hover:bg-blue-200"
+          >
+            <span className="text-sm font-medium text-blue-700">
+              {initials}
+            </span>
+          </Button>
+        </div>
       </DropdownMenuTrigger>
 
       <DropdownMenuContent className="w-56" align="end" forceMount>
@@ -100,6 +96,21 @@ export function UserAvatar() {
             <p className="text-xs text-gray-500">{user.email}</p>
           </div>
         </div>
+
+        <DropdownMenuSeparator />
+        <Link href="/chat">
+          <DropdownMenuItem className="cursor-pointer">
+            <MessageCircle className="mr-2 h-4 w-4" />
+            <span>My Chats</span>
+          </DropdownMenuItem>
+        </Link>
+
+        <Link href="/settings">
+          <DropdownMenuItem className="cursor-pointer">
+            <Settings className="mr-2 h-4 w-4" />
+            <span>Settings</span>
+          </DropdownMenuItem>
+        </Link>
 
         <DropdownMenuSeparator />
 
@@ -118,25 +129,10 @@ export function UserAvatar() {
             </span>
           </div>
           <Button variant="active" size="sm">
-            <Link href="/dashboard">Upgrade</Link>
+            <Link href="/plans">Upgrade</Link>
           </Button>
         </div>
-
         <DropdownMenuSeparator />
-        <Link href="/chat">
-          <DropdownMenuItem className="cursor-pointer">
-            <MessageCircle className="mr-2 h-4 w-4" />
-            <span>My Chats</span>
-          </DropdownMenuItem>
-        </Link>
-
-        <DropdownMenuItem className="cursor-pointer">
-          <Settings className="mr-2 h-4 w-4" />
-          <span>Settings</span>
-        </DropdownMenuItem>
-
-        <DropdownMenuSeparator />
-
         <DropdownMenuItem
           className="cursor-pointer text-red-600 focus:text-red-600"
           onClick={handleSignOut}

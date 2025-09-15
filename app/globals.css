@@ -57,6 +57,6 @@
   }
 
   .bg-gradient-radial {
-    background: radial-gradient(circle, var(--tw-gradient-stops));
+    background: radial-gradient(ellipse, var(--tw-gradient-stops));
   }
 }

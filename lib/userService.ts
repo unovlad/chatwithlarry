@@ -62,17 +62,44 @@ export const userService = {
 
   // Get user profile
   getUserProfile: async (userId: string): Promise<User | null> => {
-    const { data, error } = await createClient()
-      .from("users")
-      .select("*")
-      .eq("id", userId)
-      .single();
+    console.log("userService: Getting user profile for:", userId);
+    try {
+      const supabase = createClient();
+      console.log("userService: Supabase client created");
 
-    if (error) {
-      if (error.code === "PGRST116") return null; // Not found
-      throw error;
+      // Оптимізований запит з timeout
+      console.log("userService: Starting profile query...");
+      const profilePromise = supabase
+        .from("users")
+        .select("*")
+        .eq("id", userId)
+        .single();
+
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error("getUserProfile timeout")), 3000),
+      );
+
+      console.log("userService: Racing profile query with timeout...");
+      const { data, error } = (await Promise.race([
+        profilePromise,
+        timeoutPromise,
+      ])) as any;
+
+      if (error) {
+        if (error.code === "PGRST116") {
+          console.log("userService: User not found in database");
+          return null;
+        }
+        console.error("userService: Database error:", error);
+        throw error;
+      }
+
+      console.log("userService: User profile found from DB:", data?.id);
+      return data;
+    } catch (err) {
+      console.error("userService: Exception in getUserProfile:", err);
+      throw err;
     }
-    return data;
   },
 
   // Update user profile
@@ -92,27 +119,53 @@ export const userService = {
   },
 
   // Increment message count
-  incrementMessageCount: async (userId: string): Promise<void> => {
-    // First get current user data
-    const { data: userData, error: fetchError } = await createClient()
-      .from("users")
-      .select("messages_used")
-      .eq("id", userId)
-      .single();
+  incrementMessageCount: async (
+    userId: string,
+    currentMessagesUsed?: number,
+  ): Promise<void> => {
+    console.log(
+      "userService: Starting incrementMessageCount for userId:",
+      userId,
+    );
 
-    if (fetchError) throw fetchError;
+    let messagesUsed = currentMessagesUsed;
+
+    // Only fetch current data if not provided
+    if (messagesUsed === undefined) {
+      console.log("userService: Fetching current user data...");
+      const { data: userData, error: fetchError } = await createClient()
+        .from("users")
+        .select("messages_used")
+        .eq("id", userId)
+        .single();
+
+      if (fetchError) {
+        console.error("userService: Error fetching user data:", fetchError);
+        throw fetchError;
+      }
+
+      messagesUsed = userData.messages_used;
+    }
+
+    console.log("userService: Current messages_used:", messagesUsed);
 
     // Then update with incremented value
+    console.log("userService: Updating user with incremented message count...");
     const { error } = await createClient()
       .from("users")
       .update({
-        messages_used: (userData.messages_used || 0) + 1,
+        messages_used: (messagesUsed || 0) + 1,
         last_message_date: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       })
       .eq("id", userId);
 
-    if (error) throw error;
+    if (error) {
+      console.error("userService: Error updating message count:", error);
+      throw error;
+    }
+
+    console.log("userService: incrementMessageCount completed successfully");
   },
 
   // Reset monthly message count
@@ -165,23 +218,33 @@ export const userService = {
 
   // Get chat messages
   getChatMessages: async (chatId: string): Promise<Message[]> => {
-    const { data, error } = await createClient()
-      .from("messages")
-      .select("*")
-      .eq("chat_id", chatId)
-      .order("created_at", { ascending: true });
+    console.log("userService: Getting messages for chatId:", chatId);
+    try {
+      const { data, error } = await createClient()
+        .from("messages")
+        .select("*")
+        .eq("chat_id", chatId)
+        .order("created_at", { ascending: true });
 
-    if (error) {
-      // Якщо помилка (наприклад, чат не існує або немає доступу), повертаємо порожній масив
-      if (
-        error.code === "PGRST116" ||
-        error.message?.includes("permission denied")
-      ) {
-        return [];
+      if (error) {
+        console.error("userService: Error getting messages:", error);
+        // Якщо помилка (наприклад, чат не існує або немає доступу), повертаємо порожній масив
+        if (
+          error.code === "PGRST116" ||
+          error.message?.includes("permission denied")
+        ) {
+          console.log("userService: No messages found or permission denied");
+          return [];
+        }
+        throw error;
       }
-      throw error;
+
+      console.log("userService: Messages found:", data?.length || 0);
+      return data || [];
+    } catch (err) {
+      console.error("userService: Exception in getChatMessages:", err);
+      throw err;
     }
-    return data || [];
   },
 
   // Save message

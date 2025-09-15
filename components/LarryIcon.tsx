@@ -10,7 +10,7 @@ export function LarryIcon({ className }: { className?: string }) {
       style={{
         shapeRendering: "geometricPrecision",
         textRendering: "geometricPrecision",
-        imageRendering: "optimizeQuality",
+        imageRendering: "auto",
         fillRule: "evenodd",
         clipRule: "evenodd",
       }}
@@ -144,4 +144,3 @@ export function LarryIcon({ className }: { className?: string }) {
     </svg>
   );
 }
-

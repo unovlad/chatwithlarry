@@ -1,17 +1,15 @@
 import "./globals.css";
-import { Public_Sans } from "next/font/google";
-import { ActiveLink } from "@/components/Navbar";
-import { Button } from "@/components/ui/button";
-import { GithubIcon } from "lucide-react";
+import { Inter } from "next/font/google";
+
 import { Toaster } from "@/components/ui/sonner";
 import { NuqsAdapter } from "nuqs/adapters/next/app";
-import Link from "next/link";
-import { AuthProvider } from "@/contexts/AuthContext";
-import { UserAvatar } from "@/components/UserAvatar";
-import { InstallPrompt } from "@/components/InstallPrompt";
-import HeaderComp from "@/components/layout/header";
 
-const publicSans = Public_Sans({ subsets: ["latin"] });
+import { AuthProvider } from "@/contexts/AuthContext";
+
+import HeaderComp from "@/components/layout/header";
+import BlueGradientBackground from "@/components/BlueGradientBackground";
+
+const inter = Inter({ subsets: ["latin"] });
 
 export default function RootLayout({
   children,
@@ -30,7 +28,8 @@ export default function RootLayout({
         <link rel="shortcut icon" href="/images/favicon.ico" />
         <link rel="manifest" href="/manifest.json" />
         <meta name="theme-color" content="#000000" />
-        <meta name="apple-mobile-web-app-capable" content="yes" />
+
+        <meta name="mobile-web-app-capable" content="yes"></meta>
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
         <meta name="apple-mobile-web-app-title" content="Larry AI" />
         <link rel="apple-touch-icon" href="/icons/icon-192x192.png" />
@@ -63,14 +62,14 @@ export default function RootLayout({
           content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover"
         />
       </head>
-      <body className={publicSans.className}>
+      <body className={inter.className}>
         <NuqsAdapter>
           <AuthProvider>
-            <div className="min-h-screen bg-background">
+            <div className="min-h-screen bg-background flex flex-col">
               <HeaderComp />
-              <div className="flex-1">{children}</div>
+              <main className="flex-1 relative">{children}</main>
             </div>
-            <InstallPrompt />
+
             <Toaster />
           </AuthProvider>
         </NuqsAdapter>

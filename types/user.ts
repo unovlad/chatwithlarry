@@ -75,6 +75,8 @@ export interface AuthContextType {
   ) => Promise<void>;
   loadChats: () => Promise<Chat[]>;
   loadMessages: (chatId: string) => Promise<Message[]>;
+  openAuthModal: (mode?: "signin" | "signup") => void;
+  closeAuthModal: () => void;
 }
 
 export interface SubscriptionPlan {

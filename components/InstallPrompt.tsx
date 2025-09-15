@@ -9,8 +9,15 @@ export function InstallPrompt() {
   const [showInstallPrompt, setShowInstallPrompt] = useState(false);
   const [isIOS, setIsIOS] = useState(false);
   const [isStandalone, setIsStandalone] = useState(false);
+  const [isDismissed, setIsDismissed] = useState(false);
 
   useEffect(() => {
+    // Check if install prompt was previously dismissed
+    const dismissed =
+      typeof window !== "undefined" &&
+      localStorage.getItem("install-prompt-dismissed") === "true";
+    setIsDismissed(dismissed);
+
     // Check if device is iOS
     const iOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
     setIsIOS(iOS);
@@ -23,7 +30,9 @@ export function InstallPrompt() {
     const handleBeforeInstallPrompt = (e: Event) => {
       e.preventDefault();
       setDeferredPrompt(e);
-      setShowInstallPrompt(true);
+      if (!dismissed) {
+        setShowInstallPrompt(true);
+      }
     };
 
     window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
@@ -48,6 +57,10 @@ export function InstallPrompt() {
 
   const handleDismiss = () => {
     setShowInstallPrompt(false);
+    setIsDismissed(true);
+    if (typeof window !== "undefined") {
+      localStorage.setItem("install-prompt-dismissed", "true");
+    }
   };
 
   // Don't show install prompt if app is already installed
@@ -56,7 +69,7 @@ export function InstallPrompt() {
   }
 
   // Show iOS-specific install instructions
-  if (isIOS && !isStandalone) {
+  if (isIOS && !isStandalone && !isDismissed) {
     return (
       <div className="fixed bottom-4 left-4 right-4 z-50 animate-in slide-in-from-bottom-2 duration-300">
         <div className="bg-white border border-gray-200 rounded-lg p-3 shadow-lg max-w-sm mx-auto">
@@ -70,7 +83,7 @@ export function InstallPrompt() {
                   Install Larry AI
                 </p>
                 <p className="text-xs text-gray-500">
-                  Share → "Add to Home Screen"
+                  Share → &quot;Add to Home Screen&quot;
                 </p>
               </div>
             </div>
@@ -89,7 +102,7 @@ export function InstallPrompt() {
   }
 
   // Show standard install prompt for other browsers
-  if (showInstallPrompt && deferredPrompt) {
+  if (showInstallPrompt && deferredPrompt && !isDismissed) {
     return (
       <div className="fixed bottom-4 left-4 right-4 z-50 animate-in slide-in-from-bottom-2 duration-300">
         <div className="bg-white border border-gray-200 rounded-lg p-3 shadow-lg max-w-sm mx-auto">

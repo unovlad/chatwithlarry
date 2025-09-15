@@ -186,6 +186,15 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const messages = body.messages ?? [];
     const chatId = body.chatId;
+    const isGuestChat = body.isGuestChat;
+    const message = body.message;
+
+    console.log("API Chat request:", {
+      messagesCount: messages.length,
+      chatId,
+      isGuestChat,
+      hasMessage: !!message,
+    });
 
     // Use static responses in development mode
     if (process.env.NODE_ENV === "development") {

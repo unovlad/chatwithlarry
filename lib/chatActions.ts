@@ -14,6 +14,8 @@ export async function createChatAction(initialMessage?: string) {
       error: authError,
     } = await supabase.auth.getUser();
 
+    console.log("createChatAction - user:", !!user, "authError:", authError);
+
     if (authError || !user) {
       // Якщо користувач не авторизований, створюємо гостьовий чат
       console.log("Creating guest chat with initial message:", initialMessage);

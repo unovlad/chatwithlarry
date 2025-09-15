@@ -28,9 +28,9 @@ export default function TermsPage() {
               1. Acceptance of Terms
             </h2>
             <p className="text-gray-700 mb-4">
-              By using LarryAI ("Service"), you agree to these terms of use. If
-              you do not agree to any part of these terms, do not use our
-              service.
+              By using LarryAI (&quot;Service&quot;), you agree to these terms
+              of use. If you do not agree to any part of these terms, do not use
+              our service.
             </p>
           </section>
 
@@ -98,8 +98,8 @@ export default function TermsPage() {
               6. Disclaimer
             </h2>
             <p className="text-gray-700 mb-4">
-              The service is provided "as is" without warranties of any kind.
-              LarryAI does not guarantee the accuracy, reliability, or
+              The service is provided &quot;as is&quot; without warranties of
+              any kind. LarryAI does not guarantee the accuracy, reliability, or
               suitability of AI responses for your specific needs.
             </p>
             <p className="text-gray-700 mb-4">

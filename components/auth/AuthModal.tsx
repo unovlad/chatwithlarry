@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { SignInForm } from "./SignInForm";
 import { SignUpForm } from "./SignUpForm";
 import { X } from "lucide-react";
@@ -17,9 +18,12 @@ export function AuthModal({
   defaultMode = "signin",
 }: AuthModalProps) {
   const [mode, setMode] = useState<"signin" | "signup">(defaultMode);
+  const router = useRouter();
 
   const handleSuccess = () => {
     onClose();
+    // Перенаправляємо на головну сторінку після успішної авторизації
+    router.push("/");
   };
 
   const switchToSignUp = () => {

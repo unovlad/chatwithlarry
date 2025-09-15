@@ -31,6 +31,4 @@ If you're feeling nervous about flying, you can always tell me what's on your mi
 ✓ Every critical system has 2-3 backup systems
 ✓ Air traffic control uses sophisticated radar and communication systems
 
-You don't need to find the perfect words — just type how you feel, and I'll do my best to support you with evidence-based strategies and calming reassurance.
-
-What's on your mind right now?`;
+`;

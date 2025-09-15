@@ -6,6 +6,7 @@ import { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from "next/navigation";
+import { Footer } from "@/components/Footer";
 
 function AuthContent() {
   const [mode, setMode] = useState<"signin" | "signup">("signup");
@@ -43,13 +44,12 @@ function AuthContent() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
+    <div className="h-full mt-10 sm:mt-20 flex items-center justify-center px-4 flex-col flex w-full">
       <div className="max-w-md w-full">
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">
             Welcome to Larry AI
           </h1>
-          <p className="text-gray-600">Your flight anxiety support companion</p>
         </div>
 
         <div className="bg-white rounded-lg shadow-xl p-6">
@@ -96,6 +96,7 @@ export default function AuthPage() {
       }
     >
       <AuthContent />
+      <Footer fixed={true} />
     </Suspense>
   );
 }

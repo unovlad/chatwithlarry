@@ -28,9 +28,9 @@ export default function PrivacyPage() {
               1. Introduction
             </h2>
             <p className="text-gray-700 mb-4">
-              This privacy policy describes how LarryAI ("we", "us", "our")
-              collects, uses, and protects your personal information when using
-              our service.
+              This privacy policy describes how LarryAI (&quot;we&quot;,
+              &quot;us&quot;, &quot;our&quot;) collects, uses, and protects your
+              personal information when using our service.
             </p>
           </section>
 
@@ -173,7 +173,7 @@ export default function PrivacyPage() {
             <p className="text-gray-700 mb-4">
               We may update this privacy policy from time to time. We will
               notify you of any changes by publishing the new policy on this
-              page and updating the "Last updated" date.
+              page and updating the &quot;Last updated&quot; date.
             </p>
           </section>
 

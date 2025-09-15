@@ -16,7 +16,7 @@ export function ChatMessageBubble(props: {
       className={cn(
         `rounded-[24px] max-w-[80%] flex`,
         props.message.role === "user"
-          ? "bg-gray-200 text-secondary-foreground px-4 py-2"
+          ? "bg-blue-50 border border-blue-200 text-secondary-foreground px-4 py-2"
           : null,
         props.message.role === "user" ? "ml-auto" : "mr-auto",
         props.showTimestamp ? "mb-8" : "mb-2",
@@ -35,7 +35,7 @@ export function ChatMessageBubble(props: {
         {props.message.role === "user" ? (
           <span className="whitespace-pre-wrap">{props.message.content}</span>
         ) : (
-          <div className="prose prose-sm max-w-none bg-gray-200 px-2 py-3 rounded-lg">
+          <div className="prose prose-sm max-w-none bg-gray-100 border border-gray-200 p-3 rounded-lg">
             <ReactMarkdown
               remarkPlugins={[remarkGfm]}
               components={{
