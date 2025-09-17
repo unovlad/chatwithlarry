@@ -38,16 +38,24 @@ function ChatMessages(props: {
   const { scrollToBottom } = useStickToBottomContext();
   const prevMessagesLengthRef = useRef(0);
 
-  // Функція для розбиття повідомлень на окремі бульбашки за параграфами
+  // Function to split messages into separate bubbles by paragraphs
   const splitMessageByParagraphs = (message: Message): Message[] => {
-    // Розбиваємо контент за подвійними переносами рядків (параграфи)
+    // Split content by double line breaks (paragraphs)
     const paragraphs = message.content.split("\n\n").filter((p) => p.trim());
 
     if (paragraphs.length <= 1) {
       return [message];
     }
 
-    // Створюємо окремі повідомлення для кожного параграфа
+    // Check if this is a numbered list (starts with "1. ")
+    const isNumberedList = paragraphs.some((p) => p.trim().match(/^\d+\.\s/));
+
+    // If this is a numbered list, don't split it
+    if (isNumberedList) {
+      return [message];
+    }
+
+    // Create separate messages for each paragraph
     return paragraphs.map((paragraph, index) => ({
       ...message,
       id: `${message.id}-${index}`,
@@ -55,17 +63,17 @@ function ChatMessages(props: {
     }));
   };
 
-  // Розбиваємо всі повідомлення
+  // Split all messages
   const processedMessages = props.messages.flatMap(splitMessageByParagraphs);
 
-  // Фільтруємо дублікати першого повідомлення від користувача
+  // Filter duplicates of first user message
   const filteredMessages = useMemo(() => {
     if (processedMessages.length < 2) return processedMessages;
 
     const firstMessage = processedMessages[0];
     const secondMessage = processedMessages[1];
 
-    // Якщо перші два повідомлення від користувача ідентичні, приховуємо перше
+    // If first two user messages are identical, hide the first one
     if (
       firstMessage.role === "user" &&
       secondMessage.role === "user" &&
@@ -77,12 +85,12 @@ function ChatMessages(props: {
     return processedMessages;
   }, [processedMessages]);
 
-  // Автоскрол при додаванні нових повідомлень
+  // Auto-scroll when adding new messages
   useEffect(() => {
     const currentMessagesLength = filteredMessages.length;
 
     if (currentMessagesLength > prevMessagesLengthRef.current) {
-      // Є нові повідомлення, скролимо вниз
+      // There are new messages, scroll down
       setTimeout(() => {
         scrollToBottom();
       }, 150);
@@ -91,7 +99,16 @@ function ChatMessages(props: {
     prevMessagesLengthRef.current = currentMessagesLength;
   }, [filteredMessages.length, scrollToBottom]);
 
-  // Автоскрол при зміні контенту повідомлень (streaming)
+  // Additional auto-scroll when messages change (in case length doesn't change)
+  useEffect(() => {
+    if (filteredMessages.length > 0) {
+      setTimeout(() => {
+        scrollToBottom();
+      }, 200);
+    }
+  }, [filteredMessages, scrollToBottom]);
+
+  // Auto-scroll when message content changes (streaming)
   const prevContentRef = useRef("");
   useEffect(() => {
     const currentContent = filteredMessages.map((m) => m.content).join("");
@@ -100,7 +117,7 @@ function ChatMessages(props: {
       currentContent !== prevContentRef.current &&
       prevContentRef.current !== ""
     ) {
-      // Контент змінився (streaming), скролимо вниз
+      // Content changed (streaming), scroll down
       setTimeout(() => {
         scrollToBottom();
       }, 100);
@@ -109,10 +126,10 @@ function ChatMessages(props: {
     prevContentRef.current = currentContent;
   }, [filteredMessages, scrollToBottom]);
 
-  // Автоскрол коли зникає TypingIndicator
+  // Auto-scroll when TypingIndicator disappears
   useEffect(() => {
     if (!props.isLoading) {
-      // TypingIndicator зник, скролимо вниз
+      // TypingIndicator disappeared, scroll down
       setTimeout(() => {
         scrollToBottom();
       }, 100);
@@ -128,12 +145,12 @@ function ChatMessages(props: {
 
         const sourceKey = (props.messages.length - 1 - i).toString();
 
-        // Перевіряємо чи це останній параграф в серії повідомлень від того ж відправника
+        // Check if this is the last paragraph in a series of messages from the same sender
         const isLastInSeries =
           i === filteredMessages.length - 1 ||
           filteredMessages[i + 1]?.role !== m.role;
 
-        // Перевіряємо чи це перший параграф в серії повідомлень від того ж відправника
+        // Check if this is the first paragraph in a series of messages from the same sender
         const isFirstInSeries =
           i === 0 || filteredMessages[i - 1]?.role !== m.role;
 
@@ -183,7 +200,7 @@ export function ChatInput(props: {
           value={props.value}
           placeholder={props.placeholder}
           onChange={props.onChange}
-          className="flex-1 border-none outline-none bg-transparent px-3 py-2"
+          className="flex-1 border-none outline-none bg-transparent px-3 py-1"
         />
         {props.children}
         {props.actions}
@@ -302,7 +319,7 @@ export function ChatWindow(props: {
     console.log("ChatWindow useEffect - sessionId:", props.sessionId);
   }, [props.sessionId]);
 
-  // Редірект для неавторизованих користувачів
+  // Redirect for unauthenticated users
   useEffect(() => {
     if (isHydrated && !authLoading && !user) {
       console.log("ChatWindow: User not authenticated, redirecting to /");
@@ -310,7 +327,7 @@ export function ChatWindow(props: {
     }
   }, [isHydrated, authLoading, user, router]);
 
-  // Встановлюємо chatId
+  // Set chatId
   useEffect(() => {
     if (props.sessionId) {
       console.log("Setting chat ID:", props.sessionId);
@@ -318,7 +335,7 @@ export function ChatWindow(props: {
     }
   }, [props.sessionId]);
 
-  // Стабілізуємо параметри useChat
+  // Stabilize useChat parameters
   const chatConfig = useMemo(
     () => ({
       api: props.endpoint,
@@ -331,7 +348,7 @@ export function ChatWindow(props: {
   );
 
   const handleResponse = useCallback((response: Response) => {
-    // Приховуємо typing indicator коли починаємо отримувати відповідь
+    // Hide typing indicator when starting to receive response
     setIsWaitingForResponse(false);
 
     const sourcesHeader = response.headers.get("x-sources");
@@ -351,7 +368,7 @@ export function ChatWindow(props: {
   const handleError = useCallback((e: Error) => {
     console.error("Chat error:", e);
 
-    // Приховуємо typing indicator при помилці
+    // Hide typing indicator on error
     setIsWaitingForResponse(false);
 
     // Handle specific error types
@@ -372,10 +389,10 @@ export function ChatWindow(props: {
 
   const handleFinish = useCallback(
     async (message: any) => {
-      // Приховуємо typing indicator коли відповідь завершена
+      // Hide typing indicator when response is complete
       setIsWaitingForResponse(false);
 
-      // Визначаємо chatId для збереження
+      // Determine chatId for saving
       const chatIdForSave =
         currentChatId || (user && props.sessionId ? props.sessionId : null);
 
@@ -390,14 +407,14 @@ export function ChatWindow(props: {
         message.content.length,
       );
 
-      // Зберігаємо відповідь асистента в БД
+      // Save assistant response to database
       if (chatIdForSave && user) {
         try {
           console.log("Saving assistant message to database:", message.content);
           await saveMessage(chatIdForSave, "assistant", message.content);
           console.log("Assistant message saved successfully to database");
 
-          // Віднімаємо токени після успішного отримання відповіді
+          // Deduct tokens after successfully receiving response
           console.log("Deducting tokens after receiving assistant response");
           try {
             await incrementMessageCount();
@@ -410,7 +427,7 @@ export function ChatWindow(props: {
           }
         } catch (error) {
           console.error("Error saving assistant message to database:", error);
-          // Не віднімаємо токени якщо не вдалося зберегти повідомлення
+          // Don't deduct tokens if message couldn't be saved
         }
       } else {
         console.log(
@@ -447,7 +464,7 @@ export function ChatWindow(props: {
     try {
       console.log("Loading chat from database:", props.sessionId);
 
-      // Спочатку намагаємося завантажити через API
+      // First try to load via API
       let messages = [];
       try {
         console.log("Trying to load messages via API...");
@@ -473,7 +490,7 @@ export function ChatWindow(props: {
 
       if (messages && messages.length > 0) {
         console.log("Found messages in database:", messages.length);
-        // Конвертуємо повідомлення з БД в формат Vercel AI
+        // Convert messages from DB to Vercel AI format
         const vercelMessages = messages.map((msg: any) => ({
           id: msg.id,
           role: msg.role,
@@ -483,18 +500,18 @@ export function ChatWindow(props: {
         chat.setMessages(vercelMessages);
         setCurrentChatId(props.sessionId);
 
-        // Перевіряємо чи останнє повідомлення від користувача (без відповіді AI)
+        // Check if last message is from user (without AI response)
         const lastMessage = messages[messages.length - 1];
         if (lastMessage.role === "user" && !hasSentAutoMessage) {
           console.log(
             "Last message is from user, sending to AI for response...",
           );
           setHasSentAutoMessage(true);
-          // Відправляємо запит до AI для отримання відповіді
+          // Send request to AI to get response
           setTimeout(async () => {
             try {
               console.log("Sending auto-message to AI:", lastMessage.content);
-              // Відправляємо повідомлення напряму через append
+              // Send message directly via append
               await chat.append({
                 role: "user",
                 content: lastMessage.content,
@@ -510,20 +527,20 @@ export function ChatWindow(props: {
         return;
       } else {
         console.log("No messages found in database for chat:", props.sessionId);
-        // Якщо чат існує, але немає повідомлень, встановлюємо currentChatId
+        // If chat exists but has no messages, set currentChatId
         setCurrentChatId(props.sessionId);
       }
     } catch (error) {
       console.error("Error loading chat from database:", error);
-      // Для помилок просто встановлюємо currentChatId і показуємо порожній чат
+      // For errors just set currentChatId and show empty chat
       console.log("Setting currentChatId despite error:", props.sessionId);
       setCurrentChatId(props.sessionId);
     }
   }, [user, props.sessionId, hasSentAutoMessage, chat, loadMessages]);
 
-  // Завантажуємо існуючий чат тільки один раз
+  // Load existing chat only once
   useEffect(() => {
-    // Завантажуємо чат тільки один раз після авторизації
+    // Load chat only once after authentication
     if (
       isHydrated &&
       !authLoading &&
@@ -548,13 +565,13 @@ export function ChatWindow(props: {
     e.preventDefault();
     if (chat.isLoading || intermediateStepsLoading) return;
 
-    // Перевіряємо чи користувач авторизований
+    // Check if user is authenticated
     if (!user) {
       toast.error("Please sign in to continue the conversation.");
       return;
     }
 
-    // Перевіряємо ліміт повідомлень
+    // Check message limit
     if (!canSendMessage()) {
       setShowAuthCTA(true);
       toast.error(
@@ -563,19 +580,19 @@ export function ChatWindow(props: {
       return;
     }
 
-    // Встановлюємо chatId - тепер чат вже створений через Server Action
+    // Set chatId - chat is now created through Server Action
     let chatId = currentChatId;
     if (user && props.sessionId && !chatId) {
-      // Якщо користувач залогінений і є sessionId (UUID чату), встановлюємо його
+      // If user is logged in and has sessionId (chat UUID), set it
       chatId = props.sessionId;
       setCurrentChatId(chatId);
       console.log("Set currentChatId from sessionId:", chatId);
     }
 
-    // Токени будуть відніматися після отримання відповіді від асистента
+    // Tokens will be deducted after receiving response from assistant
 
     if (!showIntermediateSteps) {
-      // Зберігаємо повідомлення користувача в БД перед відправкою
+      // Save user message to database before sending
       if (chatId) {
         try {
           console.log(
@@ -592,19 +609,22 @@ export function ChatWindow(props: {
         console.log("No chatId available for saving user message");
       }
 
-      // Показуємо typing indicator перед відправкою
+      // Show typing indicator before sending
       setIsWaitingForResponse(true);
       console.log("Sending user message via handleSubmit:", chat.input);
       chat.handleSubmit(e);
-      // Очищаємо input після відправки
+      // Clear input after sending
       chat.setInput("");
+
+      // Auto-scroll after sending message will be handled in ChatMessages
+
       return;
     }
 
     // Some extra work to show intermediate steps properly
     setIntermediateStepsLoading(true);
 
-    // Зберігаємо повідомлення користувача в БД
+    // Save user message to database
     if (chatId) {
       try {
         console.log("Saving user message to database:", chat.input);
@@ -624,7 +644,9 @@ export function ChatWindow(props: {
     });
     chat.setMessages(messagesWithUserReply);
 
-    // Показуємо typing indicator перед відправкою
+    // Auto-scroll after adding user message will be handled in ChatMessages
+
+    // Show typing indicator before sending
     setIsWaitingForResponse(true);
 
     const response = await fetch(props.endpoint, {
@@ -690,7 +712,7 @@ export function ChatWindow(props: {
       },
     ]);
 
-    // Зберігаємо відповідь асистента в БД
+    // Save assistant response to database
     if (chatId) {
       try {
         console.log(
@@ -704,7 +726,7 @@ export function ChatWindow(props: {
         );
         console.log("Assistant message saved successfully to database");
 
-        // Віднімаємо токени після успішного отримання відповіді з intermediate steps
+        // Deduct tokens after successfully receiving response with intermediate steps
         console.log(
           "ChatWindow: Deducting tokens after receiving assistant response with intermediate steps",
         );

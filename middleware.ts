@@ -38,7 +38,7 @@ export async function middleware(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  // Якщо користувач авторизований, додаємо його профіль до headers для швидкого доступу
+  // If user is authenticated, add their profile to headers for quick access
   if (user) {
     try {
       const { data: profile } = await supabase
@@ -48,7 +48,7 @@ export async function middleware(request: NextRequest) {
         .single();
 
       if (profile) {
-        // Додаємо профіль до headers для використання в API routes
+        // Add profile to headers for use in API routes
         const requestHeaders = new Headers(request.headers);
         requestHeaders.set("x-user-profile", JSON.stringify(profile));
 
@@ -59,7 +59,7 @@ export async function middleware(request: NextRequest) {
         });
       }
     } catch (error) {
-      // Якщо не можемо отримати профіль, продовжуємо без нього
+      // If we cannot get profile, continue without it
       console.error("Middleware: Failed to get user profile:", error);
     }
   }

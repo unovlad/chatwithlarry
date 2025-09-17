@@ -8,7 +8,7 @@ export async function createChatAction(initialMessage?: string) {
   try {
     const supabase = await createClient();
 
-    // Отримуємо поточного користувача
+    // Get current user
     const {
       data: { user },
       error: authError,
@@ -17,14 +17,14 @@ export async function createChatAction(initialMessage?: string) {
     console.log("createChatAction - user:", !!user, "authError:", authError);
 
     if (authError || !user) {
-      // Якщо користувач не авторизований, створюємо гостьовий чат
+      // If user is not authenticated, create guest chat
       console.log("Creating guest chat with initial message:", initialMessage);
       const guestChat = await createGuestChat(initialMessage);
       console.log("Guest chat created:", guestChat);
       redirect(`/chat/${guestChat.id}`);
     }
 
-    // Створюємо чат в БД для авторизованого користувача
+    // Create chat in DB for authenticated user
     const chatTitle = initialMessage
       ? initialMessage.slice(0, 50) + (initialMessage.length > 50 ? "..." : "")
       : "New Chat";
@@ -45,7 +45,7 @@ export async function createChatAction(initialMessage?: string) {
       throw new Error("Failed to create chat");
     }
 
-    // Якщо є початкове повідомлення, створюємо його в БД
+    // If there is an initial message, create it in DB
     if (initialMessage) {
       const { error: messageError } = await supabase.from("messages").insert([
         {
@@ -57,16 +57,16 @@ export async function createChatAction(initialMessage?: string) {
 
       if (messageError) {
         console.error("Error creating initial message:", messageError);
-        // Не кидаємо помилку, оскільки чат вже створений
+        // Don't throw error since chat is already created
       }
     }
 
-    // Редіректимо на сторінку чату
+    // Redirect to chat page
     redirect(`/chat/${chat.id}`);
   } catch (error) {
-    // NEXT_REDIRECT - це нормальна поведінка Next.js, не логуємо як помилку
+    // NEXT_REDIRECT - this is normal Next.js behavior, do not log as error
     if (error instanceof Error && error.message === "NEXT_REDIRECT") {
-      throw error; // Перекидаємо редірект
+      throw error; // Re-throw redirect
     }
     console.error("Error in createChatAction:", error);
     throw error;

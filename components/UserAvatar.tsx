@@ -21,6 +21,7 @@ import {
 
 export function UserAvatar() {
   const { user, signOut, getRemainingMessages, openAuthModal } = useAuth();
+  const [isOpen, setIsOpen] = useState(false);
 
   const handleSignOut = async () => {
     try {
@@ -72,7 +73,7 @@ export function UserAvatar() {
     .slice(0, 2);
 
   return (
-    <DropdownMenu>
+    <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
       <DropdownMenuTrigger asChild>
         <div className="flex items-center gap-2">
           <p className="hidden sm:block text-sm text-gray-600">
@@ -128,9 +129,15 @@ export function UserAvatar() {
                 : `${remainingMessages} messages left`}
             </span>
           </div>
-          <Button variant="active" size="sm">
-            <Link href="/plans">Upgrade</Link>
-          </Button>
+          <Link
+            className="w-full"
+            href="/plans"
+            onClick={() => setIsOpen(false)}
+          >
+            <Button variant="active" size="sm">
+              Upgrade
+            </Button>
+          </Link>
         </div>
         <DropdownMenuSeparator />
         <DropdownMenuItem

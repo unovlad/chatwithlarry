@@ -86,7 +86,7 @@ export default function SettingsClient({ user }: SettingsClientProps) {
       }
 
       toast.success("All chats deleted successfully");
-      // Очищуємо кеш браузера
+
       if (typeof window !== "undefined") {
         localStorage.clear();
         sessionStorage.clear();
@@ -126,7 +126,6 @@ export default function SettingsClient({ user }: SettingsClientProps) {
 
       toast.success("Profile deleted successfully");
 
-      // Очищуємо кеш браузера
       if (typeof window !== "undefined") {
         localStorage.clear();
         sessionStorage.clear();

@@ -13,11 +13,49 @@ const deleteProfileSchema = z.object({
   email: z.string().email("Invalid email format"),
 });
 
+export async function GET() {
+  try {
+    const supabase = await createClient();
+
+    // Check authorization
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
+    if (authError || !user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    // Get user profile
+    const { data, error } = await supabase
+      .from("users")
+      .select("*")
+      .eq("id", user.id)
+      .single();
+
+    if (error) {
+      console.error("Error fetching profile:", error);
+      return NextResponse.json(
+        { error: "Error fetching profile" },
+        { status: 500 },
+      );
+    }
+
+    return NextResponse.json({ success: true, user: data });
+  } catch (error) {
+    console.error("Error in profile fetch:", error);
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 },
+    );
+  }
+}
+
 export async function PUT(request: NextRequest) {
   try {
     const supabase = await createClient();
 
-    // Перевіряємо авторизацію
+    // Check authorization
     const {
       data: { user },
       error: authError,
@@ -29,7 +67,7 @@ export async function PUT(request: NextRequest) {
     const body = await request.json();
     const validatedData = updateProfileSchema.parse(body);
 
-    // Оновлюємо профіль
+    // Update profile
     const { data, error } = await supabase
       .from("users")
       .update({
@@ -68,7 +106,7 @@ export async function DELETE(request: NextRequest) {
   try {
     const supabase = await createClient();
 
-    // Перевіряємо авторизацію
+    // Check authorization
     const {
       data: { user },
       error: authError,
@@ -80,7 +118,7 @@ export async function DELETE(request: NextRequest) {
     const body = await request.json();
     const validatedData = deleteProfileSchema.parse(body);
 
-    // Перевіряємо, чи email співпадає з email користувача
+    // Check if email matches user email
     if (validatedData.email !== user.email) {
       return NextResponse.json(
         { error: "Email does not match your account" },
@@ -88,7 +126,7 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    // Видаляємо всі чати користувача (каскадне видалення повідомлень)
+    // Delete all user chats (cascade delete messages)
     const { error: chatsError } = await supabase
       .from("chats")
       .delete()
@@ -102,7 +140,7 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    // Видаляємо профіль користувача
+    // Delete user profile
     const { error: userError } = await supabase
       .from("users")
       .delete()
@@ -116,7 +154,7 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    // Виходимо з акаунту
+    // Sign out from account
     const { error: signOutError } = await supabase.auth.signOut();
     if (signOutError) {
       console.error("Error signing out:", signOutError);

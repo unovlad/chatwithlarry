@@ -33,26 +33,32 @@ export function ChatMessageBubble(props: {
 
       <div className="flex flex-col">
         {props.message.role === "user" ? (
-          <span className="whitespace-pre-wrap">{props.message.content}</span>
+          <span className="whitespace-pre-wrap text-sm leading-relaxed">
+            {props.message.content}
+          </span>
         ) : (
-          <div className="prose prose-sm max-w-none bg-gray-100 border border-gray-200 p-3 rounded-lg">
+          <div className="prose prose-sm max-w-none bg-gray-100 border border-gray-200 p-3 rounded-lg text-gray-800">
             <ReactMarkdown
               remarkPlugins={[remarkGfm]}
               components={{
                 p: ({ children }) => (
-                  <p className="mb-2 last:mb-0">{children}</p>
+                  <p className="mb-2 last:mb-0 text-sm leading-relaxed">
+                    {children}
+                  </p>
                 ),
                 ul: ({ children }) => (
-                  <ul className="list-disc list-inside mb-2 space-y-1">
+                  <ul className="list-disc list-inside mb-2 space-y-1 text-sm leading-relaxed">
                     {children}
                   </ul>
                 ),
                 ol: ({ children }) => (
-                  <ol className="list-decimal list-inside mb-2 space-y-1">
+                  <ol className="list-decimal list-inside mb-2 space-y-1 text-sm leading-relaxed">
                     {children}
                   </ol>
                 ),
-                li: ({ children }) => <li className="text-sm">{children}</li>,
+                li: ({ children }) => (
+                  <li className="text-sm leading-relaxed">{children}</li>
+                ),
                 strong: ({ children }) => (
                   <strong className="font-semibold">{children}</strong>
                 ),
@@ -75,6 +81,20 @@ export function ChatMessageBubble(props: {
                   <blockquote className="border-l-4 border-gray-300 pl-4 italic">
                     {children}
                   </blockquote>
+                ),
+                a: ({ href, children }) => (
+                  <a
+                    href={href}
+                    className="inline-flex items-center px-3 py-1.5 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 transition-colors"
+                    target={href?.startsWith("http") ? "_blank" : undefined}
+                    rel={
+                      href?.startsWith("http")
+                        ? "noopener noreferrer"
+                        : undefined
+                    }
+                  >
+                    {children}
+                  </a>
                 ),
               }}
             >

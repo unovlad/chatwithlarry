@@ -44,7 +44,7 @@ Larry AI is a specialized chatbot designed to help people overcome their fear of
 - 🔄 30 messages/month for registered users
 - 🔄 Unlimited messages for premium users
 - 🔄 Chat history persistence
-- 🔄 Turbulence forecast (premium)
+- 🔄 Turbulence forecast
 - 🔄 Stripe subscription integration
 
 ## Usage

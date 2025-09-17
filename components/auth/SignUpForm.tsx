@@ -30,7 +30,6 @@ export function SignUpForm({ onSuccess, onSwitchToSignIn }: SignUpFormProps) {
       await signUp(email, password, fullName);
       onSuccess?.();
     } catch (error: any) {
-      // Якщо користувач вже існує, переключаємося на SignIn
       if (error.message?.includes("User already exists")) {
         onSwitchToSignIn?.();
       }

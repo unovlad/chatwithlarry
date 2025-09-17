@@ -21,20 +21,20 @@ export default function ChatSessionPage({ params }: ChatSessionPageProps) {
   const [chatId, setChatId] = useState<string | null>(null);
 
   useEffect(() => {
-    // Отримуємо chatId з params
+    // Get chatId from params
     params.then(({ id }) => setChatId(id));
   }, [params]);
 
-  // Видаляємо автоматичне збільшення лічильника - це буде робитися при відправці нового повідомлення
+  // Remove automatic counter increment - this will be done when sending new message
 
   useEffect(() => {
-    // Якщо користувач не авторизований, перенаправляємо на головну
+    // If user is not authenticated, redirect to home
     if (!loading && !user) {
       router.push("/");
     }
   }, [user, loading, router]);
 
-  // Показуємо завантаження тільки поки перевіряємо авторизацію
+  // Show loading only while checking authentication
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -46,7 +46,7 @@ export default function ChatSessionPage({ params }: ChatSessionPageProps) {
     );
   }
 
-  // Якщо користувач не авторизований, не показуємо сторінку
+  // If user is not authenticated, don't show page
   if (!user) {
     return null;
   }

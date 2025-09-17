@@ -14,7 +14,6 @@ export default async function PlansPage() {
     redirect("/auth");
   }
 
-  // Отримуємо профіль користувача
   const { data: profile, error: profileError } = await supabase
     .from("users")
     .select("*")

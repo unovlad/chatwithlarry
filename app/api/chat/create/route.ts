@@ -8,7 +8,7 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const { initialMessage } = body;
 
-    // Отримуємо поточного користувача
+    // Get current user
     const {
       data: { user },
       error: authError,
@@ -28,7 +28,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Створюємо чат в БД для авторизованого користувача
+    // Create chat in DB for authenticated user
     const chatTitle = initialMessage
       ? initialMessage.slice(0, 50) + (initialMessage.length > 50 ? "..." : "")
       : "New Chat";
@@ -52,7 +52,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Якщо є початкове повідомлення, створюємо його в БД
+    // If there is an initial message, create it in DB
     if (initialMessage) {
       const { error: messageError } = await supabase.from("messages").insert([
         {
@@ -64,7 +64,7 @@ export async function POST(req: NextRequest) {
 
       if (messageError) {
         console.error("Error creating initial message:", messageError);
-        // Не кидаємо помилку, оскільки чат вже створений
+        // Don't throw error since chat is already created
       }
     }
 

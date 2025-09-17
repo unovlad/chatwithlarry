@@ -47,14 +47,14 @@ export const userService = {
     }
   },
 
-  // Create user profile after signup (тепер не використовується - профіль створюється автоматично)
+  // Create user profile after signup (now unused - profile is created automatically)
   createUserProfile: async (
     userId: string,
     email: string,
     fullName?: string,
   ): Promise<User> => {
-    // Ця функція більше не використовується
-    // Профіль створюється автоматично через database trigger
+    // This function is no longer used
+    // Profile is created automatically via database trigger
     throw new Error(
       "User profile is created automatically via database trigger",
     );
@@ -67,7 +67,7 @@ export const userService = {
       const supabase = createClient();
       console.log("userService: Supabase client created");
 
-      // Оптимізований запит з timeout
+      // Optimized query with timeout
       console.log("userService: Starting profile query...");
       const profilePromise = supabase
         .from("users")
@@ -228,7 +228,7 @@ export const userService = {
 
       if (error) {
         console.error("userService: Error getting messages:", error);
-        // Якщо помилка (наприклад, чат не існує або немає доступу), повертаємо порожній масив
+        // If error (e.g., chat does not exist or no access), return empty array
         if (
           error.code === "PGRST116" ||
           error.message?.includes("permission denied")
@@ -267,7 +267,7 @@ export const userService = {
 
     if (error) throw error;
 
-    // Оновлюємо updated_at в чаті
+    // Update updated_at in chat
     await createClient()
       .from("chats")
       .update({ updated_at: new Date().toISOString() })

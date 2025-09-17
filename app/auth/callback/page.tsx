@@ -15,7 +15,7 @@ export default function AuthCallback() {
         setStatus("Processing OAuth callback...");
         console.log("Auth callback page loaded");
 
-        // Перевіряємо URL параметри
+        // Check URL parameters
         const urlParams = new URLSearchParams(window.location.search);
         const code = urlParams.get("code");
         const error = urlParams.get("error");
@@ -33,7 +33,7 @@ export default function AuthCallback() {
           console.log("OAuth code received:", code);
           setStatus("Authentication successful!");
 
-          // Даємо час AuthContext обробити зміни
+          // Give AuthContext time to process changes
           setTimeout(() => {
             console.log("Redirecting to home page...");
             router.push("/");
@@ -58,7 +58,7 @@ export default function AuthCallback() {
   }, [router]);
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-white">
+    <div className="min-h-screen flex items-center justify-center ">
       <div className="text-center">
         <LoaderCircle className="w-8 h-8 animate-spin mx-auto mb-4 text-blue-600" />
         <p className="text-gray-600">{status}</p>

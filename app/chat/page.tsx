@@ -22,14 +22,14 @@ export default function ChatPage() {
   const [chatsLoading, setChatsLoading] = useState(true);
 
   useEffect(() => {
-    // Якщо користувач не авторизований, перенаправляємо на головну
+    // If user is not authenticated, redirect to home
     if (!loading && !user) {
       router.push("/");
     }
   }, [user, loading, router]);
 
   useEffect(() => {
-    // Фетчимо чати коли користувач авторизований
+    // Fetch chats when user is authenticated
     if (user && !loading) {
       const fetchChats = async () => {
         try {
@@ -47,10 +47,10 @@ export default function ChatPage() {
     }
   }, [user, loading, loadChats]);
 
-  // Показуємо завантаження поки перевіряємо авторизацію
+  // Show loading while checking authentication
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center bg-blue-200/10">
         <div className="text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
           <p className="text-gray-600">Loading...</p>
@@ -59,14 +59,14 @@ export default function ChatPage() {
     );
   }
 
-  // Якщо користувач не авторизований, не показуємо сторінку
+  // If user is not authenticated, don't show page
   if (!user) {
     return null;
   }
 
   return (
-    <div className="w-full h-auto">
-      <div className="max-w-4xl mx-auto py-8 px-4 bg-white ">
+    <div className="w-full h-auto ">
+      <div className="max-w-4xl mx-auto py-8 px-4  ">
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">Your Chats</h1>
           <p className="text-gray-600">

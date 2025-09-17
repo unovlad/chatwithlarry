@@ -1,59 +1,286 @@
-# LangChain + Next.js
+# Larry AI - Flight Anxiety Support Assistant
 
-[![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/langchain-ai/langchain-nextjs-template)
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Flangchain-ai%2Flangchain-nextjs-template)
+Larry AI is a specialized chatbot designed to help people overcome their fear of flying. The system uses a combination of empathetic conversation, contextual knowledge retrieval, and real-time flight data to provide comprehensive support and information.
 
-We scaffolds a LangChain.js + Next.js starter app. It showcases how to use and combine LangChain modules for several
-use cases. Specifically:
+## 🎯 Overview
 
-Most of them use Vercel's [AI SDK](https://github.com/vercel-labs/ai) to stream tokens to the client and display the incoming messages.
+Larry AI provides 24/7 support for people experiencing flight anxiety through:
 
-The agents use [LangGraph.js](https://langchain-ai.github.io/langgraphjs/), LangChain's framework for building agentic workflows. They use preconfigured helper functions to minimize boilerplate, but you can replace them with custom graphs as desired.
+- **Empathetic AI conversations** with specialized flight anxiety knowledge
+- **Real-time turbulence forecasting** using live flight data
+- **Breathing exercises and calming techniques**
+- **Flight safety information and statistics**
+- **Personalized support based on user concerns**
 
-https://github.com/user-attachments/assets/e389e4e4-4fb9-4223-a4c2-dc002c8f20d3
+## 🏗️ Technical Stack
 
-It's free-tier friendly too! Check out the [bundle size stats below](#-bundle-size).
+### Frontend
 
-You can check out a hosted version of this repo here: https://langchain-nextjs-template.vercel.app/
+- **Next.js 15.2.4** - React framework with App Router
+- **TypeScript** - Type-safe development
+- **Tailwind CSS** - Utility-first CSS framework
+- **shadcn/ui** - Modern UI component library
+- **Lucide React** - Icon library
+- **React Markdown** - Markdown rendering
+- **Leaflet** - Interactive maps for flight tracking
+
+### Backend & APIs
+
+- **Next.js API Routes** - Serverless API endpoints
+- **LangChain** - AI/LLM orchestration framework
+- **OpenAI GPT-4** - Primary language model
+- **Vercel AI SDK** - Streaming AI responses
+- **Zod** - Schema validation
+
+### Database & Authentication
+
+- **Supabase** - PostgreSQL database with real-time features
+- **Supabase Auth** - User authentication and session management
+- **Row Level Security (RLS)** - Database security policies
+
+### External Services
+
+- **FlightAware AeroAPI** - Real-time flight tracking and route data
+- **NOAA Aviation Weather Center** - Turbulence reports (PIREPs)
+- **AeroDataBox API** - Alternative flight data source
+- **Stripe** - Payment processing and subscriptions
+- **Resend** - Email notifications
+
+### Development Tools
+
+- **ESLint** - Code linting
+- **Prettier** - Code formatting
+- **Bundle Analyzer** - Performance monitoring
+
+## 🚀 Features
+
+### Core Functionality
+
+- ✅ **Anonymous Chat** - 3 free messages for guests
+- ✅ **User Authentication** - Supabase-powered auth system
+- ✅ **Chat History** - Persistent conversation storage
+- ✅ **Message Limits** - Tiered usage based on subscription
+- ✅ **Real-time Streaming** - Live AI responses
+
+### Premium Features
+
+- ✅ **Turbulence Forecasting** - Real-time flight turbulence predictions
+- ✅ **Flight Tracking** - Live flight position and status
+- ✅ **Advanced Analytics** - Usage tracking and insights
+- ✅ **Subscription Management** - Stripe-powered billing
+
+### AI Capabilities
+
+- ✅ **Context-Aware Responses** - Knowledge base integration
+- ✅ **Empathetic Personality** - Specialized for flight anxiety
+- ✅ **Breathing Exercises** - Guided relaxation techniques
+- ✅ **Safety Education** - Aviation facts and statistics
+
+## 📁 Project Structure
+
+```
+├── app/                          # Next.js App Router
+│   ├── api/                      # API endpoints
+│   │   ├── auth/                 # Authentication endpoints
+│   │   ├── chat/                 # Chat functionality
+│   │   ├── flight/               # Flight data endpoints
+│   │   ├── stripe/               # Payment processing
+│   │   ├── turbulence/           # Turbulence forecasting
+│   │   └── user/                 # User management
+│   ├── auth/                     # Authentication pages
+│   ├── chat/                     # Chat interface
+│   ├── forecast/                 # Weather forecasting
+│   ├── plans/                    # Subscription plans
+│   ├── settings/                 # User settings
+│   └── turbulence/               # Turbulence interface
+├── components/                   # React components
+│   ├── auth/                     # Authentication components
+│   ├── ui/                       # shadcn/ui components
+│   └── ...                       # Feature components
+├── lib/                          # Utility libraries
+│   ├── supabaseClient.ts         # Supabase browser client
+│   ├── supabaseServer.ts         # Supabase server client
+│   ├── flightAwareService.ts     # Flight data service
+│   ├── noaaPirepsService.ts      # Weather data service
+│   └── ...                       # Other services
+├── data/                         # Static data
+│   ├── DefaultRetrievalText.ts   # AI knowledge base
+│   └── retrieval_snippets.json   # Scenario responses
+└── types/                        # TypeScript definitions
+```
+
+## 🔧 Environment Variables
+
+Create a `.env.local` file with the following variables:
+
+```env
+# Supabase Configuration
+NEXT_PUBLIC_SUPABASE_URL=your_supabase_project_url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key
+
+# OpenAI Configuration
+OPENAI_API_KEY=your_openai_api_key
+
+# Flight Data APIs
+FLIGHTAWARE_API_KEY=your_flightaware_api_key
+AERODATABOX_API_KEY=your_aerodatabox_api_key
+
+# Payment Processing
+STRIPE_SECRET_KEY=your_stripe_secret_key
+NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=your_stripe_publishable_key
+STRIPE_WEBHOOK_SECRET=your_stripe_webhook_secret
+
+# Email Service
+RESEND_API_KEY=your_resend_api_key
+
+# Optional: LangSmith Tracing
+LANGCHAIN_API_KEY=your_langsmith_api_key
+LANGCHAIN_TRACING_V2=true
+LANGCHAIN_CALLBACKS_BACKGROUND=false
+```
 
 ## 🚀 Getting Started
 
-First, clone this repo and download it locally.
+### Prerequisites
 
-Next, you'll need to set up environment variables in your repo's `.env.local` file. Copy the `.env.example` file to `.env.local`.
-To start with the basic examples, you'll just need to add your OpenAI API key.
+- Node.js 18+
+- npm or yarn
+- Supabase account
+- OpenAI API key
 
-Because this app is made to run in serverless Edge functions, make sure you've set the `LANGCHAIN_CALLBACKS_BACKGROUND` environment variable to `false` to ensure tracing finishes if you are using [LangSmith tracing](https://docs.smith.langchain.com/).
+### Installation
 
-Next, install the required packages using your preferred package manager (e.g. `yarn`).
+1. **Clone the repository**
 
-Now you're ready to run the development server:
+   ```bash
+   git clone <repository-url>
+   cd larry-ai
+   ```
 
-```bash
-yarn dev
-```
+2. **Install dependencies**
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result! Ask the bot something and you'll see a streamed response:
+   ```bash
+   npm install
+   ```
 
-![A streaming conversation between the user and the AI](/public/images/chat-conversation.png)
+3. **Set up environment variables**
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+   ```bash
+   cp .env.example .env.local
+   # Edit .env.local with your API keys
+   ```
 
-Backend logic lives in `app/api/chat/route.ts`. From here, you can change the prompt and model, or add other modules and logic.
+4. **Set up Supabase database**
+   - Create a new Supabase project
+   - Run the SQL scripts in the root directory to set up tables
+   - Enable Row Level Security policies
 
-## 📚 Learn More
+5. **Start development server**
 
-The example chains in the `app/api/chat/route.ts` and `app/api/chat/retrieval/route.ts` files use
-[LangChain Expression Language](https://js.langchain.com/docs/concepts#langchain-expression-language) to
-compose different LangChain.js modules together. You can integrate other retrievers, agents, preconfigured chains, and more too, though keep in mind
-`HttpResponseOutputParser` is meant to be used directly with model output.
+   ```bash
+   npm run dev
+   ```
 
-To learn more about what you can do with LangChain.js, check out the docs here:
+6. **Open your browser**
+   Navigate to [http://localhost:3000](http://localhost:3000)
 
-- https://js.langchain.com/docs/
+## 📊 API Endpoints
 
-## ▲ Deploy on Vercel
+### Chat API
 
-When ready, you can deploy your app on the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme).
+- `POST /api/chat` - Send message to Larry AI
+- `POST /api/chat/create` - Create new chat session
+- `GET /api/chat/[id]` - Get chat history
+- `POST /api/chat/[id]/messages` - Add message to chat
 
-Check out the [Next.js deployment documentation](https://nextjs.org/docs/deployment) for more details.
+### Flight Data API
+
+- `GET /api/flight` - Get flight information
+- `POST /api/turbulence` - Get turbulence forecast
+
+### User Management
+
+- `GET /api/user/profile` - Get user profile
+- `PUT /api/user/profile` - Update user profile
+- `GET /api/user/chats` - Get user's chat history
+
+### Authentication
+
+- `POST /api/auth/create-profile` - Create user profile
+
+### Payments
+
+- `POST /api/stripe/checkout` - Create Stripe checkout session
+- `POST /api/stripe/customer-portal` - Access customer portal
+- `POST /api/stripe/webhook` - Handle Stripe webhooks
+
+## 🗄️ Database Schema
+
+### Core Tables
+
+- `users` - User profiles and subscription data
+- `chats` - Chat sessions
+- `messages` - Individual chat messages
+- `subscriptions` - Stripe subscription data
+
+### Key Features
+
+- **Row Level Security (RLS)** - Secure data access
+- **Real-time subscriptions** - Live chat updates
+- **Automatic user creation** - Trigger-based profile creation
+
+## 🔒 Security Features
+
+- **Supabase RLS** - Database-level security
+- **JWT Authentication** - Secure session management
+- **API Rate Limiting** - Prevent abuse
+- **Input Validation** - Zod schema validation
+- **CORS Protection** - Cross-origin security
+- **Content Security Policy** - XSS protection
+
+## 🚀 Deployment
+
+### Vercel (Recommended)
+
+1. Connect your GitHub repository to Vercel
+2. Add environment variables in Vercel dashboard
+3. Deploy automatically on push to main branch
+
+### Other Platforms
+
+- **Netlify** - Static site hosting
+- **Railway** - Full-stack deployment
+- **DigitalOcean App Platform** - Container deployment
+
+## 📈 Performance
+
+- **Edge Runtime** - Fast API responses
+- **Streaming Responses** - Real-time AI chat
+- **Image Optimization** - Next.js automatic optimization
+- **Bundle Analysis** - Performance monitoring
+- **Caching** - Intelligent data caching
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Add tests if applicable
+5. Submit a pull request
+
+## 📄 License
+
+This project is licensed under the MIT License.
+
+## 🆘 Support
+
+For support, please:
+
+1. Check the documentation
+2. Search existing issues
+3. Create a new issue with detailed information
+
+---
+
+**Larry AI** - Making flying less scary, one conversation at a time. ✈️

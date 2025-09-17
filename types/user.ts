@@ -66,6 +66,7 @@ export interface AuthContextType {
   signOut: () => Promise<void>;
   canSendMessage: () => boolean;
   incrementMessageCount: () => Promise<void>;
+  incrementTurbulenceCount: () => Promise<void>;
   getRemainingMessages: () => number;
   createChat: (title: string) => Promise<Chat>;
   saveMessage: (

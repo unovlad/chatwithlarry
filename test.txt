@@ -1,0 +1,84 @@
+{
+	"flightNumber": "DL47",
+	"data": [
+		{
+			"greatCircleDistance": {
+				"meter": 5863339.83,
+				"km": 5863.34,
+				"mile": 3643.31,
+				"nm": 3165.95,
+				"feet": 19236679.22
+			},
+			"departure": {
+				"airport": {
+					"icao": "EHAM",
+					"iata": "AMS",
+					"name": "Amsterdam Schiphol",
+					"shortName": "Schiphol",
+					"municipalityName": "Amsterdam",
+					"location": {
+						"lat": 52.3086,
+						"lon": 4.763889
+					},
+					"countryCode": "NL",
+					"timeZone": "Europe/Amsterdam"
+				},
+				"scheduledTime": {
+					"utc": "2025-09-17 08:00Z",
+					"local": "2025-09-17 10:00+02:00"
+				},
+				"revisedTime": {
+					"utc": "2025-09-17 08:00Z",
+					"local": "2025-09-17 10:00+02:00"
+				},
+				"terminal": "2",
+				"checkInDesk": "9-16",
+				"quality": [
+					"Basic",
+					"Live"
+				]
+			},
+			"arrival": {
+				"airport": {
+					"icao": "KJFK",
+					"iata": "JFK",
+					"name": "New York John F Kennedy",
+					"shortName": "John F Kennedy",
+					"municipalityName": "New York",
+					"location": {
+						"lat": 40.6398,
+						"lon": -73.7789
+					},
+					"countryCode": "US",
+					"timeZone": "America/New_York"
+				},
+				"scheduledTime": {
+					"utc": "2025-09-17 16:20Z",
+					"local": "2025-09-17 12:20-04:00"
+				},
+				"terminal": "4",
+				"quality": [
+					"Basic"
+				]
+			},
+			"lastUpdatedUtc": "2025-09-16 19:29Z",
+			"number": "DL 47",
+			"status": "Canceled",
+			"codeshareStatus": "IsOperator",
+			"isCargo": false,
+			"aircraft": {
+				"reg": "N827NW",
+				"model": "Airbus A330-300"
+			},
+			"airline": {
+				"name": "Delta Air Lines",
+				"iata": "DL",
+				"icao": "DAL"
+			}
+		}
+	],
+	"source": "AeroDataBox"
+}
+
+---
+

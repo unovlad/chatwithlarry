@@ -15,7 +15,7 @@ function AuthContent() {
   const router = useRouter();
 
   useEffect(() => {
-    // Визначаємо режим на основі URL параметрів
+    // Determine mode based on URL parameters
     const urlMode = searchParams.get("mode");
     if (urlMode === "signin") {
       setMode("signin");
@@ -25,7 +25,7 @@ function AuthContent() {
   }, [searchParams]);
 
   useEffect(() => {
-    // Якщо користувач вже авторизований, перенаправляємо на головну
+    // If user is already authenticated, redirect to home
     if (user) {
       router.push("/");
     }
@@ -52,7 +52,7 @@ function AuthContent() {
           </h1>
         </div>
 
-        <div className="bg-white rounded-lg shadow-xl p-6">
+        <div className=" rounded-lg shadow-xl p-6">
           {mode === "signin" ? (
             <SignInForm
               onSuccess={handleSuccess}

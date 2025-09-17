@@ -64,9 +64,9 @@ export default function RootLayout({
       <body className={inter.className}>
         <NuqsAdapter>
           <AuthProvider>
-            <div className="min-h-screen bg-background flex flex-col">
+            <div className="min-h-screen  flex flex-col bg-blue-200/10">
               <MyHeader />
-              <main className="flex-1 relative">{children}</main>
+              <main className="flex-1 relative ">{children}</main>
             </div>
 
             <Toaster />

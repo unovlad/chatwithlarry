@@ -14,18 +14,18 @@ export default function FastPage() {
   const router = useRouter();
 
   useEffect(() => {
-    // Якщо користувач авторизований, перенаправляємо на головну
+    // If user is authenticated, redirect to home
     if (!loading && user) {
       router.push("/");
     }
   }, [user, loading, router]);
 
-  // Якщо користувач авторизований, не показуємо сторінку
+  // If user is authenticated, don't show page
   if (!loading && user) {
     return null;
   }
 
-  // Показуємо FastChatWindow одразу, не чекаючи на loading
+  // Show FastChatWindow immediately, without waiting for loading
   return (
     <Suspense fallback={<div>Loading...</div>}>
       <FastChatWindowWrapper />

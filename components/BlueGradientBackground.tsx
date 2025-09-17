@@ -9,8 +9,7 @@ export default function BlueGradientBackground({
 }: BlueGradientBackgroundProps) {
   return (
     <div className={`absolute inset-0 pointer-events-none ${className}`}>
-      {/* Синій градієнт від центру до країв */}
-      <div className="absolute inset-0 z-0 bg-gradient-radial from-blue-500/30 via-blue-200/20 to-transparent w-full md:w-auto" />
+      <div className="absolute inset-0 z-3 bg-gradient-radial from-blue-500/30 via-blue-200/20 to-transparent w-full md:w-auto" />
     </div>
   );
 }

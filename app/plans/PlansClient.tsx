@@ -37,7 +37,7 @@ export default function PlansClient({ user }: PlansClientProps) {
 
   const [isPending, startTransition] = useTransition();
 
-  // Розраховуємо дні до закінчення підписки
+  // Calculate days until subscription expires
   useEffect(() => {
     if (subscriptionEndDate) {
       const endDate = new Date(subscriptionEndDate);
@@ -48,7 +48,7 @@ export default function PlansClient({ user }: PlansClientProps) {
     }
   }, [subscriptionEndDate]);
 
-  // Оновлюємо профіль кожні 5 хвилин
+  // Update profile every 5 minutes
   useEffect(() => {
     const interval = setInterval(
       async () => {
@@ -65,7 +65,7 @@ export default function PlansClient({ user }: PlansClientProps) {
         }
       },
       5 * 60 * 1000,
-    ); // 5 хвилин
+    ); // 5 minutes
 
     return () => clearInterval(interval);
   }, [user.id]);
@@ -103,7 +103,7 @@ export default function PlansClient({ user }: PlansClientProps) {
     });
   };
 
-  // Обробляємо параметри URL після оплати
+  // Handle URL parameters after payment
   useEffect(() => {
     const success = searchParams.get("success");
     const plan = searchParams.get("plan");
@@ -112,7 +112,7 @@ export default function PlansClient({ user }: PlansClientProps) {
       toast.success(`Payment successful! Welcome to ${plan} plan.`);
       setIsSuccessModalOpen(true);
 
-      // Оновлюємо профіль користувача після успішної оплати
+      // Update user profile after successful payment
       const updateProfile = async () => {
         const supabase = createClient();
         const { data: profile } = await supabase
@@ -134,24 +134,24 @@ export default function PlansClient({ user }: PlansClientProps) {
   return (
     <div className="flex flex-col min-h-screen">
       <div className="flex-1">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-12">
           {/* Current Plan Status */}
           {userPlan === "premium" && (
-            <div className="mb-8 p-6 bg-blue-50 border border-blue-200 rounded-lg">
-              <div className="flex items-center justify-between">
+            <div className="mb-6 sm:mb-8 p-4 sm:p-6 bg-blue-50 border border-blue-200 rounded-lg">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div>
-                  <h3 className="text-lg font-semibold text-blue-900 mb-2">
+                  <h3 className="text-base sm:text-lg font-semibold text-blue-900 mb-2">
                     Current Plan: Premium
                   </h3>
                   {daysLeft !== null && (
-                    <p className="text-blue-700">
+                    <p className="text-sm sm:text-base text-blue-700">
                       {daysLeft > 0
                         ? `${daysLeft} days remaining in your subscription`
                         : "Your subscription has expired"}
                     </p>
                   )}
                   {subscriptionEndDate && (
-                    <p className="text-sm text-blue-600 mt-1">
+                    <p className="text-xs sm:text-sm text-blue-600 mt-1">
                       Next billing:{" "}
                       {new Date(subscriptionEndDate).toLocaleDateString(
                         "en-US",
@@ -189,7 +189,7 @@ export default function PlansClient({ user }: PlansClientProps) {
                     }
                   }}
                   variant="outline"
-                  className="bg-blue-600 hover:bg-blue-700 text-white hover:text-white"
+                  className="bg-blue-600 hover:bg-blue-700 text-white hover:text-white w-full sm:w-auto"
                 >
                   Manage Subscription
                 </Button>
@@ -197,16 +197,16 @@ export default function PlansClient({ user }: PlansClientProps) {
             </div>
           )}
 
-          <div className="text-center mb-12">
-            <h1 className="text-4xl font-bold text-gray-900 mb-4">
+          <div className="text-center mb-8 sm:mb-12">
+            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900 mb-3 sm:mb-4">
               Choose your plan
             </h1>
-            <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+            <p className="text-base sm:text-lg lg:text-xl text-gray-600 max-w-2xl mx-auto px-4">
               Unlock the full potential of Larry AI with our premium features
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8 max-w-4xl mx-auto">
             <PricingCard
               name="Free"
               price="$0"
@@ -252,36 +252,36 @@ export default function PlansClient({ user }: PlansClientProps) {
           </div>
 
           {/* FAQ Section */}
-          <div className="mt-16 max-w-3xl mx-auto">
-            <h2 className="text-2xl font-bold text-center text-gray-900 mb-8">
+          <div className="mt-12 sm:mt-16 max-w-3xl mx-auto px-4">
+            <h2 className="text-xl sm:text-2xl font-bold text-center text-gray-900 mb-6 sm:mb-8">
               Frequently Asked Questions
             </h2>
-            <div className="space-y-6">
-              <div className="bg-gray-50 p-6 rounded-lg">
-                <h3 className="font-semibold text-gray-900 mb-2">
+            <div className="space-y-4 sm:space-y-6">
+              <div className="bg-gray-50 p-4 sm:p-6 rounded-lg">
+                <h3 className="text-sm sm:text-base font-semibold text-gray-900 mb-2">
                   What happens to my data if I cancel?
                 </h3>
-                <p className="text-gray-600">
+                <p className="text-sm sm:text-base text-gray-600">
                   Your data remains safe and accessible. You can export your
                   conversations before canceling, and your account will remain
                   active until the end of your billing period.
                 </p>
               </div>
-              <div className="bg-gray-50 p-6 rounded-lg">
-                <h3 className="font-semibold text-gray-900 mb-2">
+              <div className="bg-gray-50 p-4 sm:p-6 rounded-lg">
+                <h3 className="text-sm sm:text-base font-semibold text-gray-900 mb-2">
                   Can I change plans anytime?
                 </h3>
-                <p className="text-gray-600">
+                <p className="text-sm sm:text-base text-gray-600">
                   Yes! You can upgrade or downgrade your plan at any time.
                   Changes take effect immediately, and we&apos;ll prorate any
                   differences.
                 </p>
               </div>
-              <div className="bg-gray-50 p-6 rounded-lg">
-                <h3 className="font-semibold text-gray-900 mb-2">
+              <div className="bg-gray-50 p-4 sm:p-6 rounded-lg">
+                <h3 className="text-sm sm:text-base font-semibold text-gray-900 mb-2">
                   Is there a free trial?
                 </h3>
-                <p className="text-gray-600">
+                <p className="text-sm sm:text-base text-gray-600">
                   The free plan gives you 30 messages per month to try out our
                   service. No credit card required to get started!
                 </p>
@@ -295,19 +295,28 @@ export default function PlansClient({ user }: PlansClientProps) {
 
       {/* Error Modal */}
       <Dialog open={isErrorModalOpen} onOpenChange={setIsErrorModalOpen}>
-        <DialogContent className="sm:max-w-[425px]">
+        <DialogContent className="mx-4 sm:mx-0 sm:max-w-[425px]">
           <DialogHeader>
-            <DialogTitle>Payment Failed</DialogTitle>
-            <DialogDescription>
+            <DialogTitle className="text-lg sm:text-xl">
+              Payment Failed
+            </DialogTitle>
+            <DialogDescription className="text-sm sm:text-base">
               Something went wrong with the payment. Please try again or contact
               support if the problem persists.
             </DialogDescription>
           </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => router.push("/chat")}>
+          <DialogFooter className="flex-col sm:flex-row gap-2 sm:gap-0">
+            <Button
+              variant="outline"
+              onClick={() => router.push("/chat")}
+              className="w-full sm:w-auto"
+            >
               Go to Chat
             </Button>
-            <Button onClick={() => setIsErrorModalOpen(false)}>
+            <Button
+              onClick={() => setIsErrorModalOpen(false)}
+              className="w-full sm:w-auto"
+            >
               Try Again
             </Button>
           </DialogFooter>
@@ -316,17 +325,23 @@ export default function PlansClient({ user }: PlansClientProps) {
 
       {/* Success Modal */}
       <Dialog open={isSuccessModalOpen} onOpenChange={setIsSuccessModalOpen}>
-        <DialogContent className="sm:max-w-[425px]">
+        <DialogContent className="mx-4 sm:mx-0 sm:max-w-[425px]">
           <DialogHeader>
-            <DialogTitle>Welcome to Premium!</DialogTitle>
-            <DialogDescription>
+            <DialogTitle className="text-lg sm:text-xl">
+              Welcome to Premium!
+            </DialogTitle>
+            <DialogDescription className="text-sm sm:text-base">
               Your subscription has been activated. You now have access to all
               premium features including unlimited messages and advanced AI
               capabilities.
             </DialogDescription>
           </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => router.push("/chat")}>
+          <DialogFooter className="flex-col sm:flex-row gap-2 sm:gap-0">
+            <Button
+              variant="outline"
+              onClick={() => router.push("/chat")}
+              className="w-full sm:w-auto"
+            >
               Start Chatting
             </Button>
             <Button
@@ -334,6 +349,7 @@ export default function PlansClient({ user }: PlansClientProps) {
                 setIsSuccessModalOpen(false);
                 router.replace("/plans");
               }}
+              className="w-full sm:w-auto"
             >
               Close
             </Button>

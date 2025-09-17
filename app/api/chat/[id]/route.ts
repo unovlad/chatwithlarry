@@ -9,7 +9,7 @@ export async function DELETE(
     const supabase = await createClient();
     const { id: chatId } = await params;
 
-    // Отримуємо поточного користувача
+    // Get current user
     const {
       data: { user },
       error: authError,
@@ -19,7 +19,7 @@ export async function DELETE(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Перевіряємо, чи належить чат користувачу
+    // Check if chat belongs to user
     const { data: chat, error: chatError } = await supabase
       .from("chats")
       .select("user_id")
@@ -34,7 +34,7 @@ export async function DELETE(
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    // Видаляємо повідомлення чату
+    // Delete chat messages
     const { error: messagesError } = await supabase
       .from("messages")
       .delete()
@@ -48,7 +48,7 @@ export async function DELETE(
       );
     }
 
-    // Видаляємо чат
+    // Delete chat
     const { error: deleteError } = await supabase
       .from("chats")
       .delete()

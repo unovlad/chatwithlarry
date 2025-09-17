@@ -8,7 +8,6 @@ export async function GET(
   try {
     const { id: chatId } = await params;
 
-    // Спочатку перевіряємо чи є профіль в headers (з middleware)
     const profileHeader = request.headers.get("x-user-profile");
     if (profileHeader) {
       try {

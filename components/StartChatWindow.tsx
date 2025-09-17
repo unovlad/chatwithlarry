@@ -20,17 +20,18 @@ interface StartChatWindowProps {
 
 export function StartChatWindow({
   onStartChat,
-  randomQuestions,
+  randomQuestions = [],
 }: StartChatWindowProps) {
   const [inputValue, setInputValue] = useState("");
   const [isHydrated, setIsHydrated] = useState(false);
   const [isLimitRendered, setIsLimitRendered] = useState(false);
   const [isCreatingChat, setIsCreatingChat] = useState(false);
+  const [hasUserInteracted, setHasUserInteracted] = useState(false);
 
   const { user, canSendMessage, incrementMessageCount } = useAuth();
   const router = useRouter();
 
-  // Отримуємо кількість залишкових повідомлень для гостей
+  // Get remaining messages count for guests
   const guestRemainingMessages =
     isHydrated && !user ? getGuestRemainingMessages() : 0;
 
@@ -39,8 +40,10 @@ export function StartChatWindow({
   }, []);
 
   const handleQuestionClick = async (question: string) => {
+    setHasUserInteracted(true);
+
     if (!user) {
-      // Перевіряємо ліміт повідомлень для гостей перед перенаправленням
+      // Check message limit for guests before redirect
       const guestSession = getGuestSession();
       if (!guestSession.canSendMessage) {
         toast.error(
@@ -49,7 +52,7 @@ export function StartChatWindow({
         return;
       }
 
-      // Неавторизований користувач - перенаправляємо на /fast з початковим повідомленням
+      // Unauthenticated user - redirect to /fast with initial message
       router.push(`/fast?message=${encodeURIComponent(question)}`);
       return;
     }
@@ -84,8 +87,10 @@ export function StartChatWindow({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (inputValue.trim()) {
+      setHasUserInteracted(true);
+
       if (!user) {
-        // Перевіряємо ліміт повідомлень для гостей перед перенаправленням
+        // Check message limit for guests before redirect
         const guestSession = getGuestSession();
         if (!guestSession.canSendMessage) {
           toast.error(
@@ -94,7 +99,7 @@ export function StartChatWindow({
           return;
         }
 
-        // Неавторизований користувач - перенаправляємо на /fast з початковим повідомленням
+        // Unauthenticated user - redirect to /fast with initial message
         router.push(`/fast?message=${encodeURIComponent(inputValue.trim())}`);
         setInputValue("");
         return;
@@ -193,20 +198,22 @@ export function StartChatWindow({
           {/* Suggested Questions - Always visible */}
           <div className="space-y-4">
             <div className="space-y-3">
-              {randomQuestions.map((question, index) => (
-                <Button
-                  key={index}
-                  variant="default"
-                  className="w-full justify-between p-3 md:p-3 h-auto text-left transition-colors bg-white! border-gray-200 rounded-xl hover:bg-gray-50 hover:border-gray-300 disabled:opacity-50 disabled:cursor-not-allowed"
-                  onClick={() => handleQuestionClick(question)}
-                  disabled={isCreatingChat}
-                >
-                  <span className="text-sm md:text-base text-gray-700">
-                    {question}
-                  </span>
-                  <ArrowRight className="w-4 h-4 text-gray-400 flex-shrink-0" />
-                </Button>
-              ))}
+              {randomQuestions &&
+                randomQuestions.length > 0 &&
+                randomQuestions.map((question, index) => (
+                  <Button
+                    key={index}
+                    variant="default"
+                    className="w-full justify-between p-3 md:p-3 h-auto text-left transition-colors bg-white! border-gray-200 rounded-xl hover:bg-gray-50 hover:border-gray-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                    onClick={() => handleQuestionClick(question)}
+                    disabled={isCreatingChat}
+                  >
+                    <span className="text-sm md:text-base text-gray-700">
+                      {question}
+                    </span>
+                    <ArrowRight className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                  </Button>
+                ))}
             </div>
           </div>
 
@@ -220,24 +227,27 @@ export function StartChatWindow({
             </div>
           )}
 
-          {/* Guest limit message */}
-          {isHydrated && !user && guestRemainingMessages === 0 && (
-            <div className="p-3 bg-orange-50 border border-orange-200 rounded-lg">
-              <p className="text-sm text-orange-700 text-center">
-                You&apos;ve reached the limit of guest messages. Sign up to
-                continue.
-              </p>
-            </div>
-          )}
+          {/* Guest limit message - only show after user interaction */}
+          {isHydrated &&
+            !user &&
+            guestRemainingMessages === 0 &&
+            hasUserInteracted && (
+              <div className="p-3 bg-orange-50 border border-orange-200 rounded-lg">
+                <p className="text-sm text-orange-700 text-center">
+                  You&apos;ve reached the limit of guest messages. Sign up to
+                  continue.
+                </p>
+              </div>
+            )}
 
           {/* Creating chat indicator for authenticated users */}
-          {isCreatingChat && user && (
+          {/* {isCreatingChat && user && (
             <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
               <p className="text-sm text-blue-700 text-center">
                 Creating your chat...
               </p>
             </div>
-          )}
+          )} */}
         </div>
       </div>
     </div>

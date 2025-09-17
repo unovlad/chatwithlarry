@@ -36,7 +36,7 @@ import {
   getRemainingMessages as getGuestRemainingMessages,
 } from "@/lib/guestStorage";
 
-// Копіюємо UI компоненти з ChatWindow
+// Copy UI components from ChatWindow
 function ChatMessages(props: {
   messages: Message[];
   emptyStateComponent: ReactNode;
@@ -49,23 +49,23 @@ function ChatMessages(props: {
   const prevMessagesLengthRef = useRef(0);
   const prevContentRef = useRef("");
 
-  // Передаємо scrollToBottom функцію в ref
+  // Pass scrollToBottom function to ref
   useEffect(() => {
     if (props.onScrollToBottomRef) {
       props.onScrollToBottomRef.current = scrollToBottom;
     }
   }, [scrollToBottom, props.onScrollToBottomRef]);
 
-  // Функція для розбиття повідомлень на окремі бульбашки за параграфами
+  // Function to split messages into separate bubbles by paragraphs
   const splitMessageByParagraphs = (message: Message): Message[] => {
-    // Розбиваємо контент за подвійними переносами рядків (параграфи)
+    // Split content by double line breaks (paragraphs)
     const paragraphs = message.content.split("\n\n").filter((p) => p.trim());
 
     if (paragraphs.length <= 1) {
       return [message];
     }
 
-    // Створюємо окремі повідомлення для кожного параграфа
+    // Create separate messages for each paragraph
     return paragraphs.map((paragraph, index) => ({
       ...message,
       id: `${message.id}-${index}`,
@@ -73,15 +73,15 @@ function ChatMessages(props: {
     }));
   };
 
-  // Розбиваємо всі повідомлення
+  // Split all messages
   const processedMessages = props.messages.flatMap(splitMessageByParagraphs);
 
-  // Автоскрол при додаванні нових повідомлень
+  // Auto-scroll when adding new messages
   useEffect(() => {
     const currentMessagesLength = processedMessages.length;
 
     if (currentMessagesLength > prevMessagesLengthRef.current) {
-      // Є нові повідомлення, скролимо вниз
+      // There are new messages, scroll down
       setTimeout(() => {
         scrollToBottom();
       }, 150);
@@ -90,7 +90,7 @@ function ChatMessages(props: {
     prevMessagesLengthRef.current = currentMessagesLength;
   }, [processedMessages.length, scrollToBottom]);
 
-  // Автоскрол при зміні контенту повідомлень (streaming)
+  // Auto-scroll when message content changes (streaming)
   useEffect(() => {
     const currentContent = processedMessages.map((m) => m.content).join("");
 
@@ -98,7 +98,7 @@ function ChatMessages(props: {
       currentContent !== prevContentRef.current &&
       prevContentRef.current !== ""
     ) {
-      // Контент змінився (streaming), скролимо вниз
+      // Content changed (streaming), scroll down
       setTimeout(() => {
         scrollToBottom();
       }, 100);
@@ -107,10 +107,10 @@ function ChatMessages(props: {
     prevContentRef.current = currentContent;
   }, [processedMessages, scrollToBottom]);
 
-  // Автоскрол коли зникає TypingIndicator
+  // Auto-scroll when TypingIndicator disappears
   useEffect(() => {
     if (!props.isLoading) {
-      // TypingIndicator зник, скролимо вниз
+      // TypingIndicator disappeared, scroll down
       setTimeout(() => {
         scrollToBottom();
       }, 100);
@@ -126,11 +126,11 @@ function ChatMessages(props: {
 
         const sourceKey = (props.messages.length - 1 - i).toString();
 
-        // Перевіряємо чи це перше повідомлення в серії від того ж відправника
+        // Check if this is the first message in a series from the same sender
         const isFirstInSeries =
           i === 0 || processedMessages[i - 1].role !== m.role;
 
-        // Показуємо аватарку тільки для першого повідомлення від бота в серії
+        // Show avatar only for first message from bot in series
         const showAvatar = m.role !== "user" && isFirstInSeries;
 
         return (
@@ -223,7 +223,7 @@ function ChatLayout(props: { content: ReactNode; footer: ReactNode }) {
 function ScrollToBottom({ className }: { className?: string }) {
   const { scrollToBottom, isAtBottom } = useStickToBottomContext();
 
-  // Приховуємо кнопку якщо користувач близько до кінця (за 100px)
+  // Hide button if user is close to the end (within 100px)
   if (isAtBottom) {
     return null;
   }
@@ -277,7 +277,7 @@ export function FastChatWindow() {
   const searchParams = useSearchParams();
   const router = useRouter();
 
-  // Функція для очищення query параметрів
+  // Function to clear query parameters
   const clearQueryParams = () => {
     if (searchParams.get("message")) {
       console.log("Clearing query parameters from URL");
@@ -288,7 +288,7 @@ export function FastChatWindow() {
   useEffect(() => {
     setIsHydrated(true);
 
-    // Читаємо початкове повідомлення з URL параметрів
+    // Read initial message from URL parameters
     const message = searchParams.get("message");
     if (message) {
       setInitialMessage(decodeURIComponent(message));
@@ -304,7 +304,7 @@ export function FastChatWindow() {
       console.log("FastChatWindow: onResponse called");
       setIsWaitingForResponse(false);
 
-      // Очищаємо query параметри після початку отримання відповіді
+      // Clear query parameters after starting to receive response
       clearQueryParams();
 
       const sourcesHeader = response.headers.get("x-sources");
@@ -346,7 +346,7 @@ export function FastChatWindow() {
       );
       setIsWaitingForResponse(false);
 
-      // Віднімаємо токени після отримання відповіді від асистента
+      // Deduct tokens after receiving response from assistant
       console.log(
         "FastChatWindow: Deducting tokens after receiving assistant response",
       );
@@ -358,14 +358,14 @@ export function FastChatWindow() {
       }
     },
     onToolCall: () => {
-      // Автоскрол при початку tool call
+      // Auto-scroll at start of tool call
       setTimeout(() => {
         scrollToBottomRef.current?.();
       }, 100);
     },
   });
 
-  // Логуємо зміни в повідомленнях
+  // Log changes in messages
   useEffect(() => {
     console.log(
       "FastChatWindow: Messages changed:",
@@ -374,24 +374,24 @@ export function FastChatWindow() {
     );
   }, [chat.messages]);
 
-  // Відправляємо початкове повідомлення якщо є
+  // Send initial message if exists
   useEffect(() => {
     if (isHydrated && initialMessage && chat.messages.length === 0) {
-      // Перевіряємо ліміт повідомлень для гостей перед відправкою
+      // Check message limit for guests before sending
       const guestSession = getGuestSession();
       if (!guestSession.canSendMessage) {
         setShowAuthCTA(true);
         toast.error(
           "You've reached the limit of messages. Please sign up to continue.",
         );
-        setInitialMessage(null); // Очищаємо початкове повідомлення
+        setInitialMessage(null); // Clear initial message
         return;
       }
 
       console.log("Auto-sending initial message:", initialMessage);
       setTimeout(async () => {
         try {
-          // Збільшуємо лічильник повідомлень перед відправкою
+          // Increment message counter before sending
           incrementGuestMessageCount();
 
           console.log(
@@ -404,12 +404,12 @@ export function FastChatWindow() {
           });
           console.log("FastChatWindow: Initial message sent successfully");
 
-          // Автоскрол після відправки початкового повідомлення
+          // Auto-scroll after sending initial message
           setTimeout(() => {
             scrollToBottomRef.current?.();
           }, 200);
 
-          // Очищаємо початкове повідомлення після відправки
+          // Clear initial message after sending
           setInitialMessage(null);
         } catch (error) {
           console.error(
@@ -427,7 +427,7 @@ export function FastChatWindow() {
 
     console.log("FastChatWindow: sendMessage called with input:", chat.input);
 
-    // Перевіряємо ліміт повідомлень для гостей
+    // Check message limit for guests
     const guestSession = getGuestSession();
     if (!guestSession.canSendMessage) {
       setShowAuthCTA(true);
@@ -437,23 +437,23 @@ export function FastChatWindow() {
       return;
     }
 
-    // Токени будуть відніматися після отримання відповіді від асистента
+    // Tokens will be deducted after receiving response from assistant
 
     if (!showIntermediateSteps) {
-      // Показуємо typing indicator перед відправкою
+      // Show typing indicator before sending
       setIsWaitingForResponse(true);
       console.log("FastChatWindow: Calling chat.handleSubmit");
       chat.handleSubmit(e);
       chat.setInput("");
 
-      // Автоскрол після відправки повідомлення
+      // Auto-scroll after sending message
       setTimeout(() => {
         scrollToBottomRef.current?.();
       }, 200);
       return;
     }
 
-    // Логіка для intermediate steps (якщо потрібно)
+    // Logic for intermediate steps (if needed)
     setIntermediateStepsLoading(true);
 
     const userMessage = chat.input;
@@ -531,7 +531,7 @@ export function FastChatWindow() {
       },
     ]);
 
-    // Віднімаємо токени після отримання відповіді з intermediate steps
+    // Deduct tokens after receiving response with intermediate steps
     console.log(
       "FastChatWindow: Deducting tokens after receiving assistant response with intermediate steps",
     );

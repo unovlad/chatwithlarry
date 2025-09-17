@@ -2,7 +2,7 @@
 
 import { createClient } from "@supabase/supabase-js";
 
-// Guest service використовує SERVICE_ROLE_KEY для створення чатів без авторизації
+// Guest service uses SERVICE_ROLE_KEY to create chats without authorization
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!,
@@ -19,7 +19,7 @@ export async function createGuestChat(
   initialMessage?: string,
 ): Promise<GuestChat> {
   try {
-    // Створюємо чат без user_id (гостьовий)
+    // Create chat without user_id (guest)
     const chatTitle = initialMessage
       ? initialMessage.slice(0, 50) + (initialMessage.length > 50 ? "..." : "")
       : "Guest Chat";
@@ -29,7 +29,7 @@ export async function createGuestChat(
       .insert([
         {
           title: chatTitle,
-          // user_id залишаємо null для гостьових чатів
+          // user_id remains null for guest chats
         },
       ])
       .select()
@@ -40,7 +40,7 @@ export async function createGuestChat(
       throw new Error("Failed to create guest chat");
     }
 
-    // Якщо є початкове повідомлення, створюємо його
+    // If there is an initial message, create it
     if (initialMessage) {
       const { error: messageError } = await supabaseAdmin
         .from("messages")
@@ -54,7 +54,7 @@ export async function createGuestChat(
 
       if (messageError) {
         console.error("Error creating initial guest message:", messageError);
-        // Не кидаємо помилку, оскільки чат вже створений
+        // Don't throw error since chat is already created
       }
     }
 
@@ -109,7 +109,7 @@ export async function getGuestChat(chatId: string) {
       .from("chats")
       .select("*")
       .eq("id", chatId)
-      .is("user_id", null) // Тільки гостьові чати
+      .is("user_id", null) // Only guest chats
       .single();
 
     if (chatError) {

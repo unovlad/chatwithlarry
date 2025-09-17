@@ -31,13 +31,12 @@ Your goal is to:
 
 IMPORTANT RESPONSE GUIDELINES:
 - Write like you're talking to a real person who needs comfort and reassurance
-- Vary your response length: sometimes 1-2 sentences, sometimes 2-3 short paragraphs
-- Alternate between longer, more detailed responses and shorter, punchy ones
+- Response length will be specified in the context instruction - follow it exactly
+- Start conversations with brief, warm responses and gradually provide more detail as the conversation progresses
 - Sometimes ask questions about their feelings to keep the conversation flowing
 - Sometimes provide reassurance and comfort without being asked
 - Address anxiety directly when needed
 - Use a warm, supportive, conversational tone - like talking to a friend
-- Be concise but helpful
 - Remember previous conversation context
 - Don't repeat the same questions if already asked
 - Make each response unique and personalized
@@ -69,6 +68,13 @@ FLIGHT ROUTE REASSURANCE:
 - Point out that these routes have excellent safety records and are heavily monitored
 - Reassure that air traffic control is highly experienced with these corridors
 - Note that these routes have multiple airports as alternatives if needed
+
+FLIGHT INFORMATION AND TURBULENCE DATA:
+- If user asks about flight status, turbulence conditions, weather, or any real-time flight data, direct them to check the turbulence page
+- Always provide a markdown link like this: [Check flight info](/turbulence)
+- Use phrases like "You can check current turbulence conditions and flight information" followed by the markdown link
+- This helps users get accurate, up-to-date information while keeping the conversation focused on emotional support
+- The link should appear as a clickable button in the chat interface
 
 EMERGENCY SITUATION PROTOCOL:
 - If user mentions serious physical symptoms (heart attack, chest pain, difficulty breathing, severe pain, etc.), IMMEDIATELY advise them to seek help from flight crew
@@ -122,16 +128,85 @@ async function createChatResponse(
     const outputParser = new HttpResponseOutputParser();
     const chain = prompt.pipe(model).pipe(outputParser);
 
-    // Add some randomness to make responses more varied and human-like
-    const responseVariations = [
-      "Be more conversational and ask a follow-up question about how they're feeling.",
-      "Focus on providing practical advice with a warm, supportive tone.",
-      "Show empathy and understanding, like you're talking to a close friend.",
-      "Ask about their specific concerns and offer personalized reassurance.",
-      "Mix practical tips with emotional support and encouragement.",
-    ];
-    const responseVariation =
-      responseVariations[Math.floor(Math.random() * responseVariations.length)];
+    // Calculate response length with randomization and conversation progress
+    const messageCount = messages.length;
+    const randomFactor = Math.random();
+    let responseLength = "short";
+    let responseVariation = "";
+
+    // Base length increases with conversation, but add randomness
+    if (messageCount <= 2) {
+      // Early conversation: mostly short, sometimes medium
+      if (randomFactor < 0.8) {
+        responseLength = "very short";
+        responseVariation =
+          "Keep it brief and warm - just 1-2 sentences. Be supportive but concise.";
+      } else {
+        responseLength = "short";
+        responseVariation =
+          "Keep it relatively brief - 2-3 sentences. Be encouraging and ask a simple follow-up.";
+      }
+    } else if (messageCount <= 4) {
+      // Early-mid conversation: mix of short and medium
+      if (randomFactor < 0.4) {
+        responseLength = "very short";
+        responseVariation =
+          "Keep it brief and warm - just 1-2 sentences. Be supportive but concise.";
+      } else if (randomFactor < 0.8) {
+        responseLength = "short";
+        responseVariation =
+          "Keep it relatively brief - 2-3 sentences. Be encouraging and ask a simple follow-up.";
+      } else {
+        responseLength = "medium";
+        responseVariation =
+          "Provide a bit more detail - 2-3 short paragraphs. Mix practical advice with emotional support.";
+      }
+    } else if (messageCount <= 6) {
+      // Mid conversation: mostly medium, some short/long
+      if (randomFactor < 0.2) {
+        responseLength = "short";
+        responseVariation =
+          "Keep it relatively brief - 2-3 sentences. Be encouraging and ask a simple follow-up.";
+      } else if (randomFactor < 0.7) {
+        responseLength = "medium";
+        responseVariation =
+          "Provide a bit more detail - 2-3 short paragraphs. Mix practical advice with emotional support.";
+      } else {
+        responseLength = "longer";
+        responseVariation =
+          "Give a more detailed response - 3-4 paragraphs. Be comprehensive and deeply supportive.";
+      }
+    } else if (messageCount <= 8) {
+      // Mid-late conversation: mix of medium and longer
+      if (randomFactor < 0.3) {
+        responseLength = "medium";
+        responseVariation =
+          "Provide a bit more detail - 2-3 short paragraphs. Mix practical advice with emotional support.";
+      } else if (randomFactor < 0.8) {
+        responseLength = "longer";
+        responseVariation =
+          "Give a more detailed response - 3-4 paragraphs. Be comprehensive and deeply supportive.";
+      } else {
+        responseLength = "comprehensive";
+        responseVariation =
+          "Provide a thorough, detailed response - 4+ paragraphs. Be very comprehensive, empathetic, and offer multiple techniques and reassurances.";
+      }
+    } else {
+      // Late conversation: mostly longer, some comprehensive
+      if (randomFactor < 0.2) {
+        responseLength = "medium";
+        responseVariation =
+          "Provide a bit more detail - 2-3 short paragraphs. Mix practical advice with emotional support.";
+      } else if (randomFactor < 0.6) {
+        responseLength = "longer";
+        responseVariation =
+          "Give a more detailed response - 3-4 paragraphs. Be comprehensive and deeply supportive.";
+      } else {
+        responseLength = "comprehensive";
+        responseVariation =
+          "Provide a thorough, detailed response - 4+ paragraphs. Be very comprehensive, empathetic, and offer multiple techniques and reassurances.";
+      }
+    }
 
     const stream = await chain.stream({
       chat_history: formattedPreviousMessages.join("\n"),

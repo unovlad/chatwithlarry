@@ -14,7 +14,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Логуємо зміни loading
+  // Log loading changes
   useEffect(() => {
     console.log("AuthContext: loading changed to:", loading);
   }, [loading]);
@@ -41,7 +41,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             "AuthContext: Initial session found, loading user profile via API...",
           );
           try {
-            // Використовуємо API endpoint для швидкого отримання профілю
+            // Use API endpoint for quick profile retrieval
             const response = await fetch("/api/user/profile", {
               method: "GET",
               credentials: "include",
@@ -58,7 +58,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               console.log(
                 "AuthContext: Failed to load profile via API, trying fallback...",
               );
-              // Fallback до старого методу
+              // Fallback to old method
               const userProfile = await userService.getUserProfile(
                 session.user.id,
               );
@@ -85,7 +85,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     getInitialSession();
 
-    // Fallback: встановлюємо loading в false через 5 секунд, якщо щось пішло не так
+    // Fallback: set loading to false after 5 seconds if something goes wrong
     const fallbackTimeout = setTimeout(() => {
       console.log("AuthContext: Fallback timeout - setting loading to false");
       setLoading(false);
@@ -106,7 +106,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         loading,
       );
 
-      // Уникаємо повторної обробки, якщо вже обробляємо auth event
+      // Avoid reprocessing if already processing auth event
       if (isProcessingAuth) {
         console.log("AuthContext: Already processing auth event, skipping");
         return;
@@ -114,7 +114,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       setIsProcessingAuth(true);
 
-      // НЕ встановлюємо loading = false одразу, чекаємо завантаження профілю
+      // Do NOT set loading = false immediately, wait for profile loading
       console.log(
         "AuthContext: Processing auth event:",
         event,
@@ -127,7 +127,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             "AuthContext: Getting user profile for:",
             session.user.id,
           );
-          // Використовуємо API endpoint для швидкого отримання профілю
+          // Use API endpoint for quick profile retrieval
           console.log("AuthContext: Attempting to get user profile via API...");
           let userProfile = null;
 
@@ -147,7 +147,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               );
             } else {
               console.log("AuthContext: API failed, trying direct DB query...");
-              // Fallback до прямого запиту до БД
+              // Fallback to direct DB query
               userProfile = await userService.getUserProfile(session.user.id);
               console.log(
                 "AuthContext: User profile found in DB:",
@@ -160,7 +160,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               apiError.message,
             );
             try {
-              // Останній fallback - прямий запит до БД
+              // Last fallback - direct DB query
               userProfile = await userService.getUserProfile(session.user.id);
               console.log(
                 "AuthContext: User profile found in DB (fallback):",
@@ -171,7 +171,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 "AuthContext: Failed to get user profile from DB:",
                 dbError.message,
               );
-              // Якщо не можемо отримати профіль з БД, створюємо fallback профіль
+              // If we cannot get profile from DB, create fallback profile
               console.log("AuthContext: Creating fallback user profile");
               userProfile = {
                 id: session.user.id,
@@ -196,7 +196,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             }
           }
 
-          // Використовуємо отриманий профіль (з БД або fallback)
+          // Use obtained profile (from DB or fallback)
           if (userProfile) {
             console.log("AuthContext: Using profile data:");
             console.log(
@@ -239,7 +239,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setUser(userProfile);
           console.log("AuthContext: User state set to:", userProfile?.id);
 
-          // Примусово оновлюємо сесію для синхронізації з server
+          // Force refresh session for server sync
           if (event === "SIGNED_IN") {
             console.log(
               "AuthContext: Force refreshing session for server sync...",
@@ -251,7 +251,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setUser(null);
         }
 
-        // Додаткова обробка для SIGNED_OUT event
+        // Additional processing for SIGNED_OUT event
         if (event === "SIGNED_OUT") {
           console.log(
             "AuthContext: SIGNED_OUT event received, clearing user state",
@@ -281,7 +281,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       setLoading(true);
 
-      // Спочатку перевіряємо, чи існує користувач з таким email
+      // First check if user with this email exists
       const { data: existingUser } = await createClient()
         .from("users")
         .select("id, email")
@@ -305,7 +305,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       });
 
       if (error) {
-        // Обробляємо специфічні помилки Supabase
+        // Handle specific Supabase errors
         if (
           error.message?.includes("User already registered") ||
           error.message?.includes("already been registered")
@@ -324,7 +324,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     } catch (error: any) {
       console.error("Sign up error:", error);
-      // Помилка вже оброблена вище
+      // Error already handled above
       throw error;
     } finally {
       setLoading(false);
@@ -356,15 +356,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.log("Auth successful, user:", data.user?.id);
       toast.success("Welcome back!");
 
-      // onAuthStateChange автоматично обробить зміни та оновить user state
-      // Не встановлюємо setLoading(false) тут, це зробить onAuthStateChange
+      // onAuthStateChange will automatically handle changes and update user state
+      // Do not set setLoading(false) here, onAuthStateChange will do it
     } catch (error: any) {
       console.error("Sign in error:", error);
       toast.error(error.message || "Failed to sign in");
       throw error;
     } finally {
-      // Встановлюємо loading в false тільки якщо не було успішного входу
-      // (при успішному вході onAuthStateChange встановить loading в false)
+      // Set loading to false only if there was no successful login
+      // (on successful login onAuthStateChange will set loading to false)
       if (!user) {
         setLoading(false);
       }
@@ -393,13 +393,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       console.log("Google OAuth redirect initiated");
-      // Для OAuth перенаправлення відбувається через callback сторінку
+      // For OAuth redirection happens through callback page
     } catch (error: any) {
       console.error("Google sign in error:", error);
       toast.error(error.message || "Failed to sign in with Google");
       throw error;
     } finally {
-      // Для OAuth не встановлюємо loading в false, оскільки відбувається перенаправлення
+      // For OAuth do not set loading to false since redirection happens
       // setLoading(false);
     }
   };
@@ -411,7 +411,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const supabase = createClient();
       console.log("AuthContext: Calling supabase.auth.signOut()...");
 
-      // Додаємо timeout для signOut (збільшуємо до 5 секунд)
+      // Add timeout for signOut (increase to 5 seconds)
       const signOutPromise = supabase.auth.signOut();
       const timeoutPromise = new Promise((_, reject) =>
         setTimeout(() => reject(new Error("Sign out timeout")), 1000),
@@ -439,7 +439,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.log("AuthContext: Sign out successful, setting user to null");
       setUser(null);
 
-      // Очищаємо cookies для повного signOut
+      // Clear cookies for complete signOut
       console.log("AuthContext: Clearing cookies after successful signOut...");
       document.cookie.split(";").forEach((c) => {
         const eqPos = c.indexOf("=");
@@ -454,7 +454,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       window.location.reload();
       toast.success("Signed out successfully");
 
-      // Перенаправляємо на головну сторінку
+      // Redirect to home page
       router.push("/");
     } catch (error: any) {
       console.error("Sign out error:", error);
@@ -499,6 +499,49 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     } else {
       console.log("AuthContext: No user found, skipping incrementMessageCount");
+    }
+  };
+
+  const incrementTurbulenceCount = async (): Promise<void> => {
+    if (user) {
+      try {
+        console.log(
+          "AuthContext: Starting incrementTurbulenceCount for user:",
+          user.id,
+        );
+        // Increment by 3 tokens for turbulence request
+        await userService.incrementMessageCount(user.id, user.messages_used);
+        await userService.incrementMessageCount(
+          user.id,
+          user.messages_used + 1,
+        );
+        await userService.incrementMessageCount(
+          user.id,
+          user.messages_used + 2,
+        );
+        console.log("AuthContext: incrementTurbulenceCount completed");
+
+        // Update local user state with incremented value
+        console.log("AuthContext: Updating local user state...");
+        const updatedUser = {
+          ...user,
+          messages_used: user.messages_used + 3,
+          last_message_date: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        };
+        console.log("AuthContext: User profile updated successfully");
+        setUser(updatedUser);
+      } catch (error) {
+        console.error(
+          "AuthContext: Error incrementing turbulence count:",
+          error,
+        );
+        throw error;
+      }
+    } else {
+      console.log(
+        "AuthContext: No user found, skipping incrementTurbulenceCount",
+      );
     }
   };
 
@@ -549,7 +592,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       console.log("AuthContext: Starting loadMessages for chatId:", chatId);
 
-      // Збільшуємо timeout до 10 секунд
+      // Increase timeout to 10 seconds
       const messagesPromise = userService.getChatMessages(chatId);
       const timeoutPromise = new Promise<Message[]>((_, reject) =>
         setTimeout(() => reject(new Error("loadMessages timeout")), 10000),
@@ -563,7 +606,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return messages;
     } catch (error) {
       console.error("Error loading messages:", error);
-      // Повертаємо порожній масив замість кидання помилки
+      // Return empty array instead of throwing error
       return [];
     }
   };
@@ -586,6 +629,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     signOut,
     canSendMessage,
     incrementMessageCount,
+    incrementTurbulenceCount,
     getRemainingMessages,
     createChat,
     saveMessage,

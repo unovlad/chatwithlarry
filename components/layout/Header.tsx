@@ -1,6 +1,7 @@
 import React from "react";
 import { UserAvatar } from "../UserAvatar";
 import Link from "next/link";
+import { Plane } from "lucide-react";
 
 const HeaderComp = () => {
   return (
@@ -12,7 +13,14 @@ const HeaderComp = () => {
         <p>LarryAI</p>
       </Link>
 
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-4">
+        <Link
+          href="/turbulence"
+          className="flex items-center gap-2 text-sm text-gray-600 hover:text-gray-800 transition-colors"
+        >
+          <Plane className="w-4 h-4" />
+          <span>Turbulence Forecast</span>
+        </Link>
         <UserAvatar />
       </div>
     </header>

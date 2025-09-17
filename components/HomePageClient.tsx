@@ -3,12 +3,14 @@
 import { StartChatWindow } from "@/components/StartChatWindow";
 import { Footer } from "@/components/Footer";
 import { useRouter } from "next/navigation";
+import { Button } from "./ui/button";
+import Link from "next/link";
 
 interface HomePageClientProps {
   randomQuestions: string[];
 }
 
-export function HomePageClient({ randomQuestions }: HomePageClientProps) {
+export function HomePageClient({ randomQuestions = [] }: HomePageClientProps) {
   const router = useRouter();
 
   const handleStartChat = async (message?: string) => {
@@ -55,6 +57,12 @@ export function HomePageClient({ randomQuestions }: HomePageClientProps) {
         onStartChat={handleStartChat}
         randomQuestions={randomQuestions}
       />
+
+      <Link className="w-full flex justify-center" href="/turbulence">
+        <Button className="max-w-[200px] mx-auto bg-blue-600 text-white hover:bg-blue-700 hover:text-white font-semibold p-8 py-6 rounded-full">
+          Turbulence Forecast
+        </Button>
+      </Link>
 
       <Footer />
     </>

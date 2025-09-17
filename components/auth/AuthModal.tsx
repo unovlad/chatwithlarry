@@ -22,7 +22,7 @@ export function AuthModal({
 
   const handleSuccess = () => {
     onClose();
-    // Перенаправляємо на головну сторінку після успішної авторизації
+
     router.push("/");
   };
 

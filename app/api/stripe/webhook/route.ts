@@ -40,18 +40,18 @@ export async function POST(request: NextRequest) {
         });
 
         if (userId && plan === "premium") {
-          // Отримуємо subscription ID
+          // Get subscription ID
           const subscriptionId = session.subscription as string;
 
           if (subscriptionId) {
-            // Отримуємо деталі підписки
+            // Get subscription details
             const subscription =
               await stripe.subscriptions.retrieve(subscriptionId);
             const currentPeriodEnd = new Date(
               (subscription as any).current_period_end * 1000,
             );
 
-            // Оновлюємо профіль користувача
+            // Update user profile
             await supabase
               .from("users")
               .update({
@@ -75,14 +75,14 @@ export async function POST(request: NextRequest) {
         const subscriptionId = (invoice as any).subscription as string;
 
         if (subscriptionId) {
-          // Отримуємо деталі підписки
+          // Get subscription details
           const subscription =
             await stripe.subscriptions.retrieve(subscriptionId);
           const currentPeriodEnd = new Date(
             (subscription as any).current_period_end * 1000,
           );
 
-          // Оновлюємо дату закінчення підписки
+          // Update subscription end date
           await supabase
             .from("users")
             .update({
@@ -102,7 +102,7 @@ export async function POST(request: NextRequest) {
         const subscriptionId = (invoice as any).subscription as string;
 
         if (subscriptionId) {
-          // Позначаємо підписку як неактивну
+          // Mark subscription as inactive
           await supabase
             .from("users")
             .update({
@@ -120,7 +120,7 @@ export async function POST(request: NextRequest) {
         const subscription = event.data.object as Stripe.Subscription;
         const subscriptionId = subscription.id;
 
-        // Повертаємо користувача на безкоштовний план
+        // Return user to free plan
         await supabase
           .from("users")
           .update({
@@ -142,7 +142,7 @@ export async function POST(request: NextRequest) {
           (subscription as any).current_period_end * 1000,
         );
 
-        // Оновлюємо статус підписки
+        // Update subscription status
         await supabase
           .from("users")
           .update({

@@ -5,7 +5,7 @@ export async function DELETE(request: NextRequest) {
   try {
     const supabase = await createClient();
 
-    // Перевіряємо авторизацію
+    // Check authorization
     const {
       data: { user },
       error: authError,
@@ -14,7 +14,7 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Видаляємо всі чати користувача (каскадне видалення повідомлень)
+    // Delete all user chats (cascade delete messages)
     const { error: chatsError } = await supabase
       .from("chats")
       .delete()

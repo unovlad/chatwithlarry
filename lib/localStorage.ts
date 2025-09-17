@@ -1,5 +1,3 @@
-// Утиліти для роботи з localStorage лімітами
-
 const MESSAGE_COUNT_KEY = "larry_messages";
 const MESSAGE_LIMIT = 3;
 

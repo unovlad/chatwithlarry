@@ -11,7 +11,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { plan, user_id, user_email } = body;
 
-    // Перевіряємо авторизацію
+    // Check authorization
     const supabase = await createClient();
     const {
       data: { user },
@@ -29,7 +29,7 @@ export async function POST(request: NextRequest) {
     if (plan === "premium") {
       priceId = process.env.STRIPE_PREMIUM_PRICE_ID!;
       mode = "subscription";
-      successUrl = `${process.env.NEXT_PUBLIC_APP_URL}/plans?success=${plan}`;
+      successUrl = `${process.env.NEXT_PUBLIC_APP_URL}/upgrade?success=${plan}`;
     } else {
       return NextResponse.json({ error: "Invalid plan" }, { status: 400 });
     }
@@ -47,9 +47,10 @@ export async function POST(request: NextRequest) {
       mode: mode,
       payment_method_types: ["card"],
       metadata: {
-        userid: user_id || user.id,
+        userid: user.id,
         plan: plan,
       },
+      customer_creation: "always",
       line_items: [
         {
           price: priceId,
@@ -58,7 +59,7 @@ export async function POST(request: NextRequest) {
       ],
     };
 
-    // Додаємо email користувача
+    // Add user email
     if (user_email || user.email) {
       sessionConfig.customer_email = user_email || user.email;
     }
@@ -70,6 +71,8 @@ export async function POST(request: NextRequest) {
       success_url: sessionConfig.success_url,
       mode: sessionConfig.mode,
       plan: plan,
+      userId: user.id,
+      metadata: sessionConfig.metadata,
     });
 
     return NextResponse.json({ url: session.url });
