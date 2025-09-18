@@ -106,7 +106,7 @@ export function TurbulenceForm() {
         <Input
           id="flightNumber"
           type="text"
-          placeholder="e.g. UA123, AA100, DL456"
+          placeholder="e.g.  AA100, DL456"
           value={flightNumber}
           onChange={(e) => setFlightNumber(e.target.value.toUpperCase())}
           className="text-center text-lg font-mono"
