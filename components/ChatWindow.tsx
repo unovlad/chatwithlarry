@@ -138,33 +138,39 @@ function ChatMessages(props: {
 
   return (
     <div className="flex flex-col max-w-[768px] mx-auto pb-2 w-full">
-      {filteredMessages.map((m, i) => {
-        if (m.role === "system") {
-          return <IntermediateStep key={m.id} message={m} />;
-        }
+      {filteredMessages.length === 0 && !props.isLoading ? (
+        props.emptyStateComponent
+      ) : (
+        <>
+          {filteredMessages.map((m, i) => {
+            if (m.role === "system") {
+              return <IntermediateStep key={m.id} message={m} />;
+            }
 
-        const sourceKey = (props.messages.length - 1 - i).toString();
+            const sourceKey = (props.messages.length - 1 - i).toString();
 
-        // Check if this is the last paragraph in a series of messages from the same sender
-        const isLastInSeries =
-          i === filteredMessages.length - 1 ||
-          filteredMessages[i + 1]?.role !== m.role;
+            // Check if this is the last paragraph in a series of messages from the same sender
+            const isLastInSeries =
+              i === filteredMessages.length - 1 ||
+              filteredMessages[i + 1]?.role !== m.role;
 
-        // Check if this is the first paragraph in a series of messages from the same sender
-        const isFirstInSeries =
-          i === 0 || filteredMessages[i - 1]?.role !== m.role;
+            // Check if this is the first paragraph in a series of messages from the same sender
+            const isFirstInSeries =
+              i === 0 || filteredMessages[i - 1]?.role !== m.role;
 
-        return (
-          <ChatMessageBubble
-            key={m.id}
-            message={m}
-            sources={props.sourcesForMessages[sourceKey]}
-            showTimestamp={isLastInSeries}
-            showAvatar={isFirstInSeries}
-          />
-        );
-      })}
-      {props.isLoading && <TypingIndicator />}
+            return (
+              <ChatMessageBubble
+                key={m.id}
+                message={m}
+                sources={props.sourcesForMessages[sourceKey]}
+                showTimestamp={isLastInSeries}
+                showAvatar={isFirstInSeries}
+              />
+            );
+          })}
+          {props.isLoading && <TypingIndicator />}
+        </>
+      )}
     </div>
   );
 }
@@ -764,8 +770,6 @@ export function ChatWindow(props: {
                 />
               </div>
             </div>
-          ) : chat.messages.length === 0 ? (
-            <div>{props.emptyStateComponent}</div>
           ) : (
             <ChatMessages
               messages={chat.messages}

@@ -13,7 +13,7 @@ alwaysApply: true
 - keep the logic clean
 - no surprise patterns
 - make me filthy rich
-
+- do not comment each step
 - Act as senior dev: only core, only must-have, minimum code
 - Avoid unnecessary things, explain only the essence
 

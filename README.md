@@ -185,7 +185,15 @@ LANGCHAIN_CALLBACKS_BACKGROUND=false
 6. **Open your browser**
    Navigate to [http://localhost:3000](http://localhost:3000)
 
-## 📊 API Endpoints
+   Services:
+
+   Database - [https://supabase.com](https://supabase.com)
+   Google Credentials (Auth) - [https://console.cloud.google.com/](https://console.cloud.google.com/)
+   OpenAI GPT API - [https://platform.openai.com/](https://platform.openai.com/)
+   Stripe (for payments) - [https://stripe.com/](https://stripe.com/)
+   Resend (email) - [https://resend.com/](https://resend.com/)
+   Flight tracking data - [https://www.flightaware.com/aeroapi/portal/documentation#overview](https://www.flightaware.com/aeroapi/portal/documentation#overview)
+   Reserve flight tracking data - [https://rapidapi.com/aedbx-aedbx/api/aerodatabox](https://rapidapi.com/aedbx-aedbx/api/aerodatabox)
 
 ### Chat API
 
