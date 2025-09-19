@@ -428,3 +428,5 @@ WHERE created_at < NOW() - INTERVAL '1 year';
 -- All components from existing SQL files have been integrated
 -- ========================================
 
+
+

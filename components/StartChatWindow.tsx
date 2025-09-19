@@ -180,7 +180,7 @@ export function StartChatWindow({
                   onChange={(e) => setInputValue(e.target.value)}
                   placeholder="Ask Larry about your flight concerns..."
                   disabled={isCreatingChat}
-                  className="w-full px-4 py-3 md:py-4 pr-12 md:pr-16 text-base md:text-lg border border-gray-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-transparent bg-background disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full px-4 py-3 md:py-4 pr-12 md:pr-16 text-sm md:text-md border border-gray-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-transparent bg-background disabled:opacity-50 disabled:cursor-not-allowed"
                 />
                 <Button
                   type="submit"

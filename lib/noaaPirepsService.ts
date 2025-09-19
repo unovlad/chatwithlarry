@@ -71,6 +71,7 @@ export class NOAAPirepsService {
     try {
       // Create bounding box from route segments
       const bbox = this.createBoundingBox(segments);
+      // Note: NOAA API may not support bbox parameter, fallback to global if needed
       const url = `${this.baseUrl}?format=json&bbox=${bbox}`;
 
       console.log(`🌪️  Fetching PIREPs from: ${url}`);
@@ -85,6 +86,31 @@ export class NOAAPirepsService {
         console.warn(
           `NOAA PIREPs API error: ${response.status} - ${response.statusText}`,
         );
+        // Try fallback to global bounding box if bbox parameter failed
+        if (bbox !== "-180,-90,180,90") {
+          console.log("🔄 Trying fallback to global bounding box...");
+          const fallbackUrl = `${this.baseUrl}?format=json`;
+          const fallbackResponse = await fetch(fallbackUrl, {
+            headers: {
+              "User-Agent": "TurbulenceForecastAPI/1.0",
+            },
+          });
+
+          if (fallbackResponse.ok) {
+            const fallbackText = await fallbackResponse.text();
+            if (fallbackText && fallbackText.trim() !== "") {
+              try {
+                const fallbackPireps = JSON.parse(fallbackText);
+                console.log(
+                  `✅ Fallback successful: got ${fallbackPireps.length} PIREPs globally`,
+                );
+                return this.processPirepsData(fallbackPireps, segments);
+              } catch (parseError) {
+                console.error("❌ Fallback parse error:", parseError);
+              }
+            }
+          }
+        }
         return []; // Return empty array instead of throwing error
       }
 
@@ -106,78 +132,46 @@ export class NOAAPirepsService {
         return [];
       }
 
-      console.log(`📊 Received ${pireps.length} PIREPs from NOAA`);
-
-      if (pireps.length === 0) {
-        return [];
-      }
-
-      // Count reports with turbulence data
-      const turbulencePireps = pireps.filter(
-        (pirep) =>
-          pirep.tbInt1 && pirep.tbInt1 !== "" && pirep.tbInt1 !== "NEG",
-      );
-      console.log(
-        `🌪️  Found ${turbulencePireps.length} PIREPs with turbulence data`,
-      );
-
-      const turbulenceReports: TurbulenceReport[] = [];
-
-      for (const pirep of turbulencePireps) {
-        console.log(
-          `   Processing turbulence report: ${pirep.tbInt1} at (${pirep.lat}, ${pirep.lon})`,
-        );
-
-        const coordinates = {
-          lat: pirep.lat,
-          lon: pirep.lon,
-        };
-
-        // Find the closest segment
-        let closestSegment: RouteSegment | null = null;
-        let minDistance = Infinity;
-
-        for (const segment of segments) {
-          const distance = this.calculateDistanceToSegment(
-            coordinates,
-            segment.from,
-            segment.to,
-          );
-
-          if (distance < minDistance) {
-            minDistance = distance;
-            closestSegment = segment;
-          }
-        }
-
-        // Only include reports within our radius
-        if (minDistance <= this.maxDistanceKm && closestSegment) {
-          turbulenceReports.push({
-            id: `${pirep.icaoId}-${pirep.obsTime}`,
-            coordinates,
-            altitude: pirep.fltLvl * 100, // Convert flight level to feet
-            intensity: this.mapTurbulenceIntensity(pirep.tbInt1),
-            type: pirep.tbType1 as "CAT" | "CHOP" | "NEG",
-            frequency: pirep.tbFreq1 as "OCNL" | "CONT" | "NEG",
-            reportTime: new Date(pirep.obsTime * 1000).toISOString(),
-            distance: minDistance,
-          });
-        }
-      }
-
-      console.log(
-        `🌪️  Found ${turbulenceReports.length} turbulence reports within ${this.maxDistanceKm}km of route`,
-      );
-      return turbulenceReports;
+      return this.processPirepsData(pireps, segments);
     } catch (error) {
       console.error("Error fetching PIREPs data from NOAA:", error);
       return [];
     }
   }
 
-  private createBoundingBox(segments: RouteSegment[]): string {
-    // Always use global bounding box to ensure we get data
-    return "-180,-90,180,90";
+  private createBoundingBox(segments: RouteSegment[], bufferDeg = 2): string {
+    if (segments.length === 0) {
+      console.warn("⚠️ No segments provided, using global bounding box");
+      return "-180,-90,180,90";
+    }
+
+    let minLat = Infinity,
+      minLon = Infinity;
+    let maxLat = -Infinity,
+      maxLon = -Infinity;
+
+    // Find bounds from all route segments
+    segments.forEach((segment) => {
+      [segment.from, segment.to].forEach((point) => {
+        if (point.lat < minLat) minLat = point.lat;
+        if (point.lat > maxLat) maxLat = point.lat;
+        if (point.lon < minLon) minLon = point.lon;
+        if (point.lon > maxLon) maxLon = point.lon;
+      });
+    });
+
+    // Add buffer and clamp to valid ranges
+    minLat = Math.max(-90, minLat - bufferDeg);
+    maxLat = Math.min(90, maxLat + bufferDeg);
+    minLon = Math.max(-180, minLon - bufferDeg);
+    maxLon = Math.min(180, maxLon + bufferDeg);
+
+    const bbox = `${minLon},${minLat},${maxLon},${maxLat}`;
+    console.log(
+      `🗺️ Created bounding box for route: ${bbox} (buffer: ±${bufferDeg}°)`,
+    );
+
+    return bbox;
   }
 
   private mapTurbulenceIntensity(
@@ -259,6 +253,89 @@ export class NOAAPirepsService {
 
   private toRadians(degrees: number): number {
     return degrees * (Math.PI / 180);
+  }
+
+  private processPirepsData(
+    pireps: PIREPFeature[],
+    segments: RouteSegment[],
+  ): TurbulenceReport[] {
+    console.log(`📊 Processing ${pireps.length} PIREPs from NOAA`);
+
+    if (pireps.length === 0) {
+      console.log(`⚠️  No PIREPs found in the specified area and time range`);
+      return [];
+    }
+
+    // Count reports with turbulence data
+    const turbulencePireps = pireps.filter(
+      (pirep) => pirep.tbInt1 && pirep.tbInt1 !== "" && pirep.tbInt1 !== "NEG",
+    );
+    console.log(
+      `🌪️  Found ${turbulencePireps.length} PIREPs with turbulence data out of ${pireps.length} total PIREPs`,
+    );
+
+    if (turbulencePireps.length === 0) {
+      console.log(
+        `⚠️  No turbulence PIREPs found within route area. Consider fallback to GFS/NOMADS forecast.`,
+      );
+      return [];
+    }
+
+    const turbulenceReports: TurbulenceReport[] = [];
+
+    for (const pirep of turbulencePireps) {
+      console.log(
+        `   Processing turbulence report: ${pirep.tbInt1} at (${pirep.lat}, ${pirep.lon})`,
+      );
+
+      const coordinates = {
+        lat: pirep.lat,
+        lon: pirep.lon,
+      };
+
+      // Find the closest segment
+      let closestSegment: RouteSegment | null = null;
+      let minDistance = Infinity;
+
+      for (const segment of segments) {
+        const distance = this.calculateDistanceToSegment(
+          coordinates,
+          segment.from,
+          segment.to,
+        );
+
+        if (distance < minDistance) {
+          minDistance = distance;
+          closestSegment = segment;
+        }
+      }
+
+      // Only include reports within our radius
+      if (minDistance <= this.maxDistanceKm && closestSegment) {
+        console.log(
+          `   ✅ Including ${pirep.tbInt1} turbulence at ${pirep.fltLvl * 100}ft, ${minDistance.toFixed(1)}km from route`,
+        );
+        turbulenceReports.push({
+          id: `${pirep.icaoId}-${pirep.obsTime}`,
+          coordinates,
+          altitude: pirep.fltLvl * 100, // Convert flight level to feet
+          intensity: this.mapTurbulenceIntensity(pirep.tbInt1),
+          type: pirep.tbType1 as "CAT" | "CHOP" | "NEG",
+          frequency: pirep.tbFreq1 as "OCNL" | "CONT" | "NEG",
+          reportTime: new Date(pirep.obsTime * 1000).toISOString(),
+          distance: minDistance,
+        });
+      } else {
+        console.log(
+          `   ❌ Excluding ${pirep.tbInt1} turbulence at ${pirep.fltLvl * 100}ft, ${minDistance.toFixed(1)}km from route (max: ${this.maxDistanceKm}km)`,
+        );
+      }
+    }
+
+    console.log(
+      `🌪️  Found ${turbulenceReports.length} turbulence reports within ${this.maxDistanceKm}km of route`,
+    );
+    return turbulenceReports;
   }
 
   // Generate route segments between airports

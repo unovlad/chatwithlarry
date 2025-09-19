@@ -64,30 +64,13 @@ export function TurbulenceForm() {
     setError("");
 
     try {
-      // For guests increment turbulence requests counter
-      if (!user) {
-        const success = incrementGuestTurbulenceCount();
-        if (!success) {
-          toast.error(
-            "You've reached the limit of 1 turbulence request. Please sign up to continue.",
-          );
-          setIsLoading(false);
-          return;
-        }
-      } else {
-        // For authenticated users spend 3 tokens
-        try {
-          await incrementTurbulenceCount();
-        } catch (error) {
-          console.error("Error incrementing turbulence count:", error);
-          toast.error("Failed to process request. Please try again.");
-          setIsLoading(false);
-          return;
-        }
-      }
-
-      // Redirect to forecast page
-      router.push(`/forecast/${flightNumber.trim().toUpperCase()}`);
+      // Redirect to forecast page - increment will happen only on successful API response
+      router.push(
+        `/forecast/${flightNumber
+          .trim()
+          .toUpperCase()
+          .replace(/[^A-Z0-9]/g, "")}`,
+      );
     } catch (err) {
       setError("Error processing request");
       setIsLoading(false);
@@ -108,7 +91,11 @@ export function TurbulenceForm() {
           type="text"
           placeholder="e.g.  AA100, DL456"
           value={flightNumber}
-          onChange={(e) => setFlightNumber(e.target.value.toUpperCase())}
+          onChange={(e) =>
+            setFlightNumber(
+              e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ""),
+            )
+          }
           className="text-center text-lg font-mono"
           disabled={isLoading}
         />

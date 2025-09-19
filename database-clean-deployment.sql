@@ -352,3 +352,5 @@ COMMENT ON COLUMN public.messages.role IS 'Роль відправника: user
 -- Safe for fresh/clean database installations
 -- ========================================
 
+
+

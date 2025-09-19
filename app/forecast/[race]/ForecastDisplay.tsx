@@ -22,6 +22,8 @@ import {
   Route,
   Users,
 } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
+import { incrementGuestTurbulenceCount } from "@/lib/guestStorage";
 
 interface TurbulenceForecast {
   flightNumber: string;
@@ -86,6 +88,7 @@ export function ForecastDisplay({ flightNumber }: ForecastDisplayProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
   const router = useRouter();
+  const { user, incrementTurbulenceCount } = useAuth();
 
   const fetchForecast = useCallback(async () => {
     try {
@@ -107,12 +110,28 @@ export function ForecastDisplay({ flightNumber }: ForecastDisplayProps) {
 
       const data = await response.json();
       setForecast(data);
+
+      // Only increment counter on successful API response
+      if (!user) {
+        // Guest user - increment turbulence requests counter
+        const success = incrementGuestTurbulenceCount();
+        if (!success) {
+          console.warn("Failed to increment guest turbulence count");
+        }
+      } else {
+        // Authenticated user - spend 3 tokens
+        try {
+          await incrementTurbulenceCount();
+        } catch (error) {
+          console.error("Error incrementing turbulence count:", error);
+        }
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unknown error");
     } finally {
       setIsLoading(false);
     }
-  }, [flightNumber]);
+  }, [flightNumber, user, incrementTurbulenceCount]);
 
   useEffect(() => {
     if (flightNumber) {
