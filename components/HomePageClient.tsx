@@ -58,7 +58,7 @@ export function HomePageClient({ randomQuestions = [] }: HomePageClientProps) {
         randomQuestions={randomQuestions}
       />
 
-      <Link className="w-full flex justify-center" href="/turbulence">
+      <Link className="w-full flex justify-center" href="/forecast">
         <Button className="max-w-[200px] mx-auto bg-blue-600 text-white hover:bg-blue-700 hover:text-white font-semibold p-8 py-6 rounded-full">
           Turbulence Forecast
         </Button>

@@ -9,6 +9,7 @@ alwaysApply: true
 ## alwaysApply: true
 
 - don't break stuff
+- do not comment each step.
 - don't delete my db, auth, or keys
 - keep the logic clean
 - no surprise patterns

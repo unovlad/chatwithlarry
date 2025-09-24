@@ -32,7 +32,7 @@ function AuthContent() {
   }, [user, router]);
 
   const handleSuccess = () => {
-    router.push("/");
+    // Don't redirect immediately - let the useEffect handle it when user state updates
   };
 
   const switchToSignUp = () => {

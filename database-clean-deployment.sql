@@ -354,3 +354,11 @@ COMMENT ON COLUMN public.messages.role IS 'Роль відправника: user
 
 
 
+
+
+
+
+
+
+
+

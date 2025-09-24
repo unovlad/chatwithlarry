@@ -2,6 +2,7 @@ import { Suspense } from "react";
 import { createClient } from "@/lib/supabaseServer";
 import { redirect } from "next/navigation";
 import UpgradeClient from "./UpgradeClient";
+import { Footer } from "@/components/Footer";
 
 export default async function UpgradePage({
   searchParams,
@@ -20,10 +21,11 @@ export default async function UpgradePage({
   const params = await searchParams;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+    <div className="min-h-screen ">
       <div className="container mx-auto px-4 py-8">
         <Suspense fallback={<div>Loading...</div>}>
           <UpgradeClient success={params.success} />
+          <Footer fixed={true} />
         </Suspense>
       </div>
     </div>

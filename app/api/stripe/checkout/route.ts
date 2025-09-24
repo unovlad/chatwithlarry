@@ -50,7 +50,6 @@ export async function POST(request: NextRequest) {
         userid: user.id,
         plan: plan,
       },
-      customer_creation: "always",
       line_items: [
         {
           price: priceId,

@@ -30,12 +30,35 @@ export function TurbulenceForm() {
     setIsHydrated(true);
   }, []);
 
+  const validateFlightNumber = (flightNum: string): string | null => {
+    const trimmed = flightNum.trim().toUpperCase();
+
+    if (!trimmed) {
+      return "Please enter a flight number";
+    }
+
+    if (trimmed.length > 10) {
+      return "Flight number is too long (maximum 10 characters)";
+    }
+
+    if (trimmed.length < 3) {
+      return "Flight number is too short (minimum 3 characters)";
+    }
+
+    if (!/^[A-Z]{2,3}\d{1,4}$/.test(trimmed)) {
+      return "Invalid flight number format. Use format like AA100, DL456, or UA2457";
+    }
+
+    return null;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setHasUserInteracted(true);
 
-    if (!flightNumber.trim()) {
-      setError("Please enter a flight number");
+    const validationError = validateFlightNumber(flightNumber);
+    if (validationError) {
+      setError(validationError);
       return;
     }
 
@@ -91,11 +114,20 @@ export function TurbulenceForm() {
           type="text"
           placeholder="e.g.  AA100, DL456"
           value={flightNumber}
-          onChange={(e) =>
-            setFlightNumber(
-              e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ""),
-            )
-          }
+          onChange={(e) => {
+            const cleanValue = e.target.value
+              .toUpperCase()
+              .replace(/[^A-Z0-9]/g, "");
+            setFlightNumber(cleanValue);
+
+            // Clear error when user starts typing correctly
+            if (error && cleanValue.length > 0) {
+              const validationError = validateFlightNumber(cleanValue);
+              if (!validationError) {
+                setError("");
+              }
+            }
+          }}
           className="text-center text-lg font-mono"
           disabled={isLoading}
         />

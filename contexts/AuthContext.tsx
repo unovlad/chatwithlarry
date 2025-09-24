@@ -98,28 +98,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event: any, session: any) => {
-      console.log(
-        "AuthContext: Auth state change:",
-        event,
-        session?.user?.id,
-        "current loading:",
-        loading,
-      );
+      console.log("AuthContext: Auth state change:", event, session?.user?.id);
 
-      // Avoid reprocessing if already processing auth event
+      // Skip if already processing to avoid race conditions
       if (isProcessingAuth) {
         console.log("AuthContext: Already processing auth event, skipping");
         return;
       }
 
       setIsProcessingAuth(true);
-
-      // Do NOT set loading = false immediately, wait for profile loading
-      console.log(
-        "AuthContext: Processing auth event:",
-        event,
-        "keeping loading true until profile loaded",
-      );
+      setLoading(true);
 
       try {
         if (session?.user) {
@@ -127,12 +115,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             "AuthContext: Getting user profile for:",
             session.user.id,
           );
-          // Use API endpoint for quick profile retrieval
-          console.log("AuthContext: Attempting to get user profile via API...");
-          let userProfile = null;
 
+          let userProfile = null;
           try {
-            console.log("AuthContext: Starting API call...");
+            // Try API first
             const response = await fetch("/api/user/profile", {
               method: "GET",
               credentials: "include",
@@ -141,136 +127,49 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             if (response.ok) {
               const { user: profileData } = await response.json();
               userProfile = profileData;
-              console.log(
-                "AuthContext: User profile found via API:",
-                userProfile,
-              );
+              console.log("AuthContext: User profile loaded via API");
             } else {
-              console.log("AuthContext: API failed, trying direct DB query...");
               // Fallback to direct DB query
               userProfile = await userService.getUserProfile(session.user.id);
-              console.log(
-                "AuthContext: User profile found in DB:",
-                userProfile,
-              );
+              console.log("AuthContext: User profile loaded via DB");
             }
-          } catch (apiError: any) {
-            console.error(
-              "AuthContext: Failed to get user profile via API:",
-              apiError.message,
-            );
-            try {
-              // Last fallback - direct DB query
-              userProfile = await userService.getUserProfile(session.user.id);
-              console.log(
-                "AuthContext: User profile found in DB (fallback):",
-                userProfile,
-              );
-            } catch (dbError: any) {
-              console.error(
-                "AuthContext: Failed to get user profile from DB:",
-                dbError.message,
-              );
-              // If we cannot get profile from DB, create fallback profile
-              console.log("AuthContext: Creating fallback user profile");
-              userProfile = {
-                id: session.user.id,
-                email: session.user.email || "",
-                full_name: session.user.user_metadata?.full_name || "",
-                messages_used: 0,
-                messages_limit: 3,
-                subscription_plan: "free" as const,
-                subscription_status: "active" as const,
-                trial_used: false,
-                trial_start_date: undefined,
-                trial_end_date: undefined,
-                onboarding_completed: false,
-                monthly_reset_date: new Date().toISOString(),
-                timezone: "UTC",
-                language: "en",
-                notification_settings: {},
-                user_preferences: {},
-                created_at: new Date().toISOString(),
-                updated_at: new Date().toISOString(),
-              };
-            }
+          } catch (error) {
+            console.error("AuthContext: Error loading profile:", error);
+            // Create fallback profile
+            userProfile = {
+              id: session.user.id,
+              email: session.user.email || "",
+              full_name: session.user.user_metadata?.full_name || "",
+              messages_used: 0,
+              messages_limit: 3,
+              subscription_plan: "free" as const,
+              subscription_status: "active" as const,
+              trial_used: false,
+              trial_start_date: undefined,
+              trial_end_date: undefined,
+              onboarding_completed: false,
+              monthly_reset_date: new Date().toISOString(),
+              timezone: "UTC",
+              language: "en",
+              notification_settings: {},
+              user_preferences: {},
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+            };
           }
 
-          // Use obtained profile (from DB or fallback)
-          if (userProfile) {
-            console.log("AuthContext: Using profile data:");
-            console.log(
-              "AuthContext: Full profile object:",
-              JSON.stringify(userProfile, null, 2),
-            );
-            console.log("AuthContext: Profile ID:", userProfile.id);
-            console.log("AuthContext: Profile email:", userProfile.email);
-            console.log(
-              "AuthContext: Profile full_name:",
-              userProfile.full_name,
-            );
-            console.log(
-              "AuthContext: Profile messages_used:",
-              userProfile.messages_used,
-            );
-            console.log(
-              "AuthContext: Profile messages_limit:",
-              userProfile.messages_limit,
-            );
-            console.log(
-              "AuthContext: Profile subscription_plan:",
-              userProfile.subscription_plan,
-            );
-            console.log(
-              "AuthContext: Profile subscription_status:",
-              userProfile.subscription_status,
-            );
-            console.log(
-              "AuthContext: Profile trial_used:",
-              userProfile.trial_used,
-            );
-            console.log(
-              "AuthContext: Profile onboarding_completed:",
-              userProfile.onboarding_completed,
-            );
-          }
-
-          console.log("AuthContext: Setting user state...");
           setUser(userProfile);
-          console.log("AuthContext: User state set to:", userProfile?.id);
-
-          // Force refresh session for server sync
-          if (event === "SIGNED_IN") {
-            console.log(
-              "AuthContext: Force refreshing session for server sync...",
-            );
-            await supabase.auth.refreshSession();
-          }
+          console.log("AuthContext: User state updated");
         } else {
-          console.log("AuthContext: No session, setting user to null");
-          setUser(null);
-        }
-
-        // Additional processing for SIGNED_OUT event
-        if (event === "SIGNED_OUT") {
-          console.log(
-            "AuthContext: SIGNED_OUT event received, clearing user state",
-          );
+          console.log("AuthContext: No session, clearing user");
           setUser(null);
         }
       } catch (error) {
         console.error("AuthContext: Error handling auth state change:", error);
         setUser(null);
       } finally {
-        console.log(
-          "AuthContext: Setting loading to false in finally block for event:",
-          event,
-        );
         setLoading(false);
         setIsProcessingAuth(false);
-        console.log(
-          "AuthContext: Loading set to false, isProcessingAuth set to false",
-        );
       }
     });
 
@@ -356,18 +255,62 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.log("Auth successful, user:", data.user?.id);
       toast.success("Welcome back!");
 
-      // onAuthStateChange will automatically handle changes and update user state
-      // Do not set setLoading(false) here, onAuthStateChange will do it
+      // Immediately update user state after successful login
+      if (data.user) {
+        try {
+          // Get user profile immediately
+          const response = await fetch("/api/user/profile", {
+            method: "GET",
+            credentials: "include",
+          });
+
+          if (response.ok) {
+            const { user: userProfile } = await response.json();
+            console.log("Immediate user profile loaded:", userProfile);
+            setUser(userProfile);
+          } else {
+            // Fallback to direct DB query
+            const userProfile = await userService.getUserProfile(data.user.id);
+            if (userProfile) {
+              setUser(userProfile);
+            }
+          }
+        } catch (profileError) {
+          console.error(
+            "Error loading user profile immediately:",
+            profileError,
+          );
+          // Create fallback profile
+          const fallbackProfile = {
+            id: data.user.id,
+            email: data.user.email || "",
+            full_name: data.user.user_metadata?.full_name || "",
+            messages_used: 0,
+            messages_limit: 3,
+            subscription_plan: "free" as const,
+            subscription_status: "active" as const,
+            trial_used: false,
+            trial_start_date: undefined,
+            trial_end_date: undefined,
+            onboarding_completed: false,
+            monthly_reset_date: new Date().toISOString(),
+            timezone: "UTC",
+            language: "en",
+            notification_settings: {},
+            user_preferences: {},
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          };
+          setUser(fallbackProfile);
+        }
+      }
+
+      setLoading(false);
     } catch (error: any) {
       console.error("Sign in error:", error);
       toast.error(error.message || "Failed to sign in");
+      setLoading(false);
       throw error;
-    } finally {
-      // Set loading to false only if there was no successful login
-      // (on successful login onAuthStateChange will set loading to false)
-      if (!user) {
-        setLoading(false);
-      }
     }
   };
 

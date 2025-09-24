@@ -122,12 +122,15 @@ SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key
 # OpenAI Configuration
 OPENAI_API_KEY=your_openai_api_key
 
+# Google Analytics
+NEXT_PUBLIC_GA_MEASUREMENT_ID=G-XXXXXXXXXX
+
 # Flight Data APIs
 FLIGHTAWARE_API_KEY=your_flightaware_api_key
 AERODATABOX_API_KEY=your_aerodatabox_api_key
 
 # Payment Processing
-STRIPE_SECRET_KEY=your_stripe_secret_key
+NEXT_STRIPE_SECRET_KEY=your_stripe_secret_key
 NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=your_stripe_publishable_key
 STRIPE_WEBHOOK_SECRET=your_stripe_webhook_secret
 

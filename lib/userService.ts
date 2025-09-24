@@ -6,8 +6,9 @@ export const userService = {
   canSendMessage: (user: User | null): boolean => {
     if (!user) return false;
     if (
-      user.subscription_plan === "premium" ||
-      user.subscription_plan === "enterprise"
+      (user.subscription_plan === "premium" ||
+        user.subscription_plan === "enterprise") &&
+      user.subscription_status === "active"
     )
       return true;
     return user.messages_used < user.messages_limit;
@@ -17,8 +18,9 @@ export const userService = {
   getRemainingMessages: (user: User | null): number => {
     if (!user) return 0;
     if (
-      user.subscription_plan === "premium" ||
-      user.subscription_plan === "enterprise"
+      (user.subscription_plan === "premium" ||
+        user.subscription_plan === "enterprise") &&
+      user.subscription_status === "active"
     )
       return Infinity;
     return Math.max(0, user.messages_limit - user.messages_used);

@@ -135,7 +135,9 @@ export function UserAvatar() {
             onClick={() => setIsOpen(false)}
           >
             <Button variant="active" size="sm">
-              Upgrade
+              {remainingMessages === Infinity
+                ? "Manage Subscription"
+                : "Upgrade"}
             </Button>
           </Link>
         </div>

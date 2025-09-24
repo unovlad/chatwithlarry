@@ -5,6 +5,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { NuqsAdapter } from "nuqs/adapters/next/app";
 
 import { AuthProvider } from "@/contexts/AuthContext";
+import GoogleAnalytics from "@/components/GoogleAnalytics";
 
 import MyHeader from "@/components/ui/myheader";
 
@@ -62,6 +63,7 @@ export default function RootLayout({
         />
       </head>
       <body className={inter.className}>
+        <GoogleAnalytics />
         <NuqsAdapter>
           <AuthProvider>
             <div className="min-h-screen  flex flex-col bg-blue-200/10">

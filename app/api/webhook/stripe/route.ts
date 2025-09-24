@@ -10,14 +10,21 @@ const stripe = new Stripe(process.env.NEXT_STRIPE_SECRET_KEY!, {
 const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET!;
 
 export async function POST(request: NextRequest) {
+  console.log("=== WEBHOOK RECEIVED ===");
+  console.log("Headers:", Object.fromEntries(request.headers.entries()));
+
   try {
     const body = await request.text();
     const signature = request.headers.get("stripe-signature")!;
+
+    console.log("Webhook secret configured:", !!webhookSecret);
+    console.log("Signature present:", !!signature);
 
     let event: Stripe.Event;
 
     try {
       event = stripe.webhooks.constructEvent(body, signature, webhookSecret);
+      console.log("Event constructed successfully:", event.type, event.id);
     } catch (err) {
       console.error("Webhook signature verification failed:", err);
       return NextResponse.json({ error: "Invalid signature" }, { status: 400 });
@@ -253,16 +260,33 @@ export async function POST(request: NextRequest) {
         const currentPeriodEnd = (subscription as any).current_period_end
           ? new Date((subscription as any).current_period_end * 1000)
           : null;
+        const cancelAtPeriodEnd = (subscription as any).cancel_at_period_end;
+
+        console.log("Subscription updated:", {
+          id: subscriptionId,
+          status: subscription.status,
+          cancel_at_period_end: cancelAtPeriodEnd,
+          current_period_end: currentPeriodEnd?.toISOString(),
+        });
 
         // Update subscription status
         const updateData: any = {
-          subscription_status:
-            subscription.status === "active" ? "active" : "inactive",
           updated_at: new Date().toISOString(),
         };
 
-        if (currentPeriodEnd && !isNaN(currentPeriodEnd.getTime())) {
-          updateData.subscription_end_date = currentPeriodEnd.toISOString();
+        // Handle subscription status
+        if (cancelAtPeriodEnd) {
+          // Subscription is cancelled but still active until period end
+          updateData.subscription_status = "cancelled";
+          updateData.subscription_end_date =
+            currentPeriodEnd?.toISOString() || null;
+        } else {
+          // Normal active/inactive subscription
+          updateData.subscription_status =
+            subscription.status === "active" ? "active" : "inactive";
+          if (currentPeriodEnd && !isNaN(currentPeriodEnd.getTime())) {
+            updateData.subscription_end_date = currentPeriodEnd.toISOString();
+          }
         }
 
         const { error } = await supabase
@@ -277,6 +301,7 @@ export async function POST(request: NextRequest) {
             "Updated subscription:",
             subscriptionId,
             subscription.status,
+            cancelAtPeriodEnd ? "(cancelled at period end)" : "",
           );
         }
         break;
@@ -315,9 +340,10 @@ export async function POST(request: NextRequest) {
         console.log(`Unhandled event type: ${event.type}`);
     }
 
+    console.log("=== WEBHOOK COMPLETED SUCCESSFULLY ===");
     return NextResponse.json({ received: true });
   } catch (error) {
-    console.error("Webhook error:", error);
+    console.error("=== WEBHOOK ERROR ===", error);
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 },

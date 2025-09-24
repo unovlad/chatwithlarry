@@ -32,6 +32,12 @@ yarn-error.log*
 .vercel
 .env
 .env.local
+.cursor
+/.cursor
+/cursor
+.cursor/
+/.cursor/
+/cursor/
 
 # typescript
 *.tsbuildinfo

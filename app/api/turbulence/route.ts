@@ -6,6 +6,7 @@ import {
   type TurbulenceReport,
   type RouteSegment,
 } from "@/lib/noaaPirepsService";
+import { SimpleBumpySkiesService } from "@/lib/simpleBumpySkiesService";
 
 // AeroDataBox API integration
 const AERODATABOX_API_KEY =
@@ -98,8 +99,12 @@ interface AeroDataBoxFlight {
 async function getAeroDataBoxFlight(
   flightNumber: string,
 ): Promise<AeroDataBoxFlight | null> {
+  const startTime = Date.now();
+  const requestId = `aerodatabox_${flightNumber}_${Date.now()}`;
+
   try {
     console.log(`🔍 Fetching AeroDataBox data for ${flightNumber}...`);
+    cacheMetrics.activeRequests.add(requestId);
 
     const url = `https://${AERODATABOX_HOST}/flights/number/${flightNumber}?withAircraftImage=false&withLocation=false`;
 
@@ -112,12 +117,24 @@ async function getAeroDataBoxFlight(
       cache: "no-store",
     });
 
-    console.log(`🛫 AeroDataBox response status: ${response.status}`);
+    const responseSize = parseInt(
+      response.headers.get("content-length") || "0",
+    );
+    console.log(
+      `🛫 AeroDataBox response status: ${response.status}, size: ${responseSize} bytes`,
+    );
 
     if (!response.ok) {
       const errorText = await response.text();
       console.log(
         `❌ AeroDataBox API failed: ${response.status} - ${errorText}`,
+      );
+      logApiCall(
+        "AeroDataBox",
+        flightNumber,
+        startTime,
+        false,
+        new Error(`${response.status}: ${errorText}`),
       );
       return null;
     }
@@ -126,6 +143,13 @@ async function getAeroDataBoxFlight(
     const responseText = await response.text();
     if (!responseText || responseText.trim() === "") {
       console.log(`❌ AeroDataBox returned empty response`);
+      logApiCall(
+        "AeroDataBox",
+        flightNumber,
+        startTime,
+        false,
+        new Error("Empty response"),
+      );
       return null;
     }
 
@@ -134,17 +158,17 @@ async function getAeroDataBoxFlight(
       data = JSON.parse(responseText);
     } catch (parseError) {
       console.log(`❌ AeroDataBox JSON parse error:`, parseError);
-      console.log(`❌ Raw response:`, responseText);
+      console.log(`❌ Raw response:`, responseText.substring(0, 200) + "...");
+      logApiCall("AeroDataBox", flightNumber, startTime, false, parseError);
       return null;
     }
 
     // Check for error in response
     if (data.error) {
       console.log(`❌ AeroDataBox API error:`, data.error);
+      logApiCall("AeroDataBox", flightNumber, startTime, false, data.error);
       return null;
     }
-
-    console.log(`✅ AeroDataBox data received:`, JSON.stringify(data, null, 2));
 
     // Handle both wrapped and unwrapped responses
     let flightData;
@@ -156,18 +180,39 @@ async function getAeroDataBoxFlight(
       console.log(
         `⚠️  AeroDataBox: Unexpected response format for ${flightNumber}`,
       );
+      logApiCall(
+        "AeroDataBox",
+        flightNumber,
+        startTime,
+        false,
+        new Error("Unexpected response format"),
+      );
       return null;
     }
 
     if (flightData.length > 0) {
+      console.log(
+        `✅ AeroDataBox data received for ${flightNumber}: ${flightData.length} flights`,
+      );
+      logApiCall("AeroDataBox", flightNumber, startTime, true);
       return flightData[0];
     }
 
     console.log(`⚠️  AeroDataBox: No flight data found for ${flightNumber}`);
+    logApiCall(
+      "AeroDataBox",
+      flightNumber,
+      startTime,
+      false,
+      new Error("No flight data found"),
+    );
     return null;
   } catch (error) {
     console.log(`💥 AeroDataBox API error:`, error);
+    logApiCall("AeroDataBox", flightNumber, startTime, false, error);
     return null;
+  } finally {
+    cacheMetrics.activeRequests.delete(requestId);
   }
 }
 
@@ -227,16 +272,133 @@ interface TurbulenceForecast {
   };
 }
 
-// Cache for storing forecasts (in-memory)
-const forecastCache = new Map<
-  string,
-  { data: TurbulenceForecast; timestamp: number }
->();
+// Enhanced cache with metrics and request tracking
+interface CacheEntry<T> {
+  data: T;
+  timestamp: number;
+  hits: number;
+  lastAccessed: number;
+}
+
+interface CacheMetrics {
+  totalHits: number;
+  totalMisses: number;
+  totalRequests: number;
+  activeRequests: Set<string>;
+}
+
+const forecastCache = new Map<string, CacheEntry<TurbulenceForecast>>();
+const basicCache = new Map<string, CacheEntry<any>>();
 const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+const BASIC_CACHE_DURATION = 30 * 60 * 1000; // 30 minutes for basic flight info
+const MAX_CACHE_SIZE = 1000; // Prevent memory leaks
+
+// Track active requests to prevent duplicates
+const activeRequests = new Map<string, Promise<any>>();
+const cacheMetrics: CacheMetrics = {
+  totalHits: 0,
+  totalMisses: 0,
+  totalRequests: 0,
+  activeRequests: new Set(),
+};
+
+// Enhanced logging with timing
+function logApiCall(
+  apiName: string,
+  flightNumber: string,
+  startTime: number,
+  success: boolean,
+  error?: any,
+) {
+  const duration = Date.now() - startTime;
+  const status = success ? "✅" : "❌";
+
+  console.log(
+    `${status} ${apiName} API call for ${flightNumber}: ${duration}ms`,
+  );
+
+  if (!success && error) {
+    console.log(`   Error: ${error.message || error}`);
+  }
+
+  // Log cache metrics periodically
+  if (Math.random() < 0.1) {
+    // 10% chance to log metrics
+    logCacheMetrics();
+  }
+}
+
+function logCacheMetrics() {
+  const hitRate =
+    cacheMetrics.totalRequests > 0
+      ? ((cacheMetrics.totalHits / cacheMetrics.totalRequests) * 100).toFixed(1)
+      : "0";
+
+  console.log(
+    `📊 Cache Metrics: ${hitRate}% hit rate (${cacheMetrics.totalHits}/${cacheMetrics.totalRequests})`,
+  );
+  console.log(
+    `📊 Cache sizes: Forecast=${forecastCache.size}, Basic=${basicCache.size}`,
+  );
+  console.log(`📊 Active requests: ${cacheMetrics.activeRequests.size}`);
+}
+
+// Clear cache function for testing
+function clearCache() {
+  forecastCache.clear();
+  basicCache.clear();
+  activeRequests.clear();
+  cacheMetrics.totalHits = 0;
+  cacheMetrics.totalMisses = 0;
+  cacheMetrics.totalRequests = 0;
+  cacheMetrics.activeRequests.clear();
+  console.log("🧹 Cache cleared and metrics reset");
+}
+
+// Cache cleanup function to prevent memory leaks
+function cleanupCache() {
+  const now = Date.now();
+
+  // Clean expired entries
+  for (const [key, entry] of forecastCache.entries()) {
+    if (now - entry.timestamp > CACHE_DURATION) {
+      forecastCache.delete(key);
+    }
+  }
+
+  for (const [key, entry] of basicCache.entries()) {
+    if (now - entry.timestamp > BASIC_CACHE_DURATION) {
+      basicCache.delete(key);
+    }
+  }
+
+  // Remove oldest entries if cache is too large
+  if (forecastCache.size > MAX_CACHE_SIZE) {
+    const entries = Array.from(forecastCache.entries());
+    entries.sort((a, b) => a[1].lastAccessed - b[1].lastAccessed);
+    const toRemove = entries.slice(0, forecastCache.size - MAX_CACHE_SIZE);
+    toRemove.forEach(([key]) => forecastCache.delete(key));
+  }
+
+  if (basicCache.size > MAX_CACHE_SIZE) {
+    const entries = Array.from(basicCache.entries());
+    entries.sort((a, b) => a[1].lastAccessed - b[1].lastAccessed);
+    const toRemove = entries.slice(0, basicCache.size - MAX_CACHE_SIZE);
+    toRemove.forEach(([key]) => basicCache.delete(key));
+  }
+
+  console.log(
+    `🧹 Cache cleanup completed: Forecast=${forecastCache.size}, Basic=${basicCache.size}`,
+  );
+}
+
+// Run cleanup every 10 minutes
+setInterval(cleanupCache, 10 * 60 * 1000);
 
 // Initialize services
 const flightAwareService = new FlightAwareService();
 const noaaPirepsService = new NOAAPirepsService();
+const bumpySkiesService = new SimpleBumpySkiesService();
 
 // Validation schema
 const turbulenceRequestSchema = z.object({
@@ -289,6 +451,10 @@ async function createTurbulenceForecast(
 
   console.log(`✈️  Route: ${fromIata} → ${toIata}`);
   if (useAeroDataBox) {
+    console.log(`   AeroDataBox: ${aeroDataBoxFlight}`);
+    console.log(
+      `   AeroDataBox: ${JSON.stringify(aeroDataBoxFlight, null, 2)}`,
+    );
     console.log(`   Airline: ${aeroDataBoxFlight.airline?.name || "Unknown"}`);
     console.log(`   Status: ${aeroDataBoxFlight.status || "Unknown"}`);
     console.log(
@@ -421,115 +587,272 @@ async function createTurbulenceForecast(
     JSON.stringify(routeSegments, null, 2),
   );
 
-  // Get turbulence reports from NOAA PIREPs
-  console.log(`🌪️  Fetching turbulence reports from NOAA PIREPs...`);
-  const turbulenceReports =
-    await noaaPirepsService.getTurbulenceReports(routeSegments);
+  // Use BumpySkies service for real turbulence data
+  console.log(`🌪️  Generating turbulence forecast using BumpySkies service...`);
 
-  console.log(`📊 Found ${turbulenceReports.length} PIREPs reports`);
-  console.log(
-    `📋 FULL TURBULENCE REPORTS DATA:`,
-    JSON.stringify(turbulenceReports, null, 2),
-  );
+  try {
+    // Try BumpySkies service first (has real turbulence modeling)
+    const bumpySkiesForecast =
+      await bumpySkiesService.generateTurbulenceForecast(flightNumber);
+    console.log(`✅ BumpySkies forecast generated successfully`);
 
-  if (turbulenceReports.length > 0) {
-    const severityCounts = turbulenceReports.reduce(
-      (acc, report) => {
-        acc[report.intensity] = (acc[report.intensity] || 0) + 1;
-        return acc;
-      },
-      {} as Record<string, number>,
+    // Convert BumpySkies format to our API format
+    const forecast = convertBumpySkiesToApiFormat(bumpySkiesForecast);
+    console.log(`📊 Converted to API format: ${forecast.length} segments`);
+
+    const result = createResultFromBumpySkies(
+      flightNumber,
+      bumpySkiesForecast,
+      forecast,
+      useAeroDataBox,
+      aeroDataBoxFlight,
+      flightRoute,
     );
-    console.log(`   Severity breakdown:`, severityCounts);
+
+    console.log(`📋 FINAL BUMPYSKIES RESULT:`, JSON.stringify(result, null, 2));
+    return result;
+  } catch (bumpyError) {
+    console.warn(`⚠️ BumpySkies service failed: ${bumpyError}`);
+    console.log(`🔄 Falling back to NOAA PIREPs...`);
+
+    // Fallback to original NOAA PIREPs method
+    const turbulenceReports =
+      await noaaPirepsService.getTurbulenceReports(routeSegments);
+    console.log(`📊 Found ${turbulenceReports.length} PIREPs reports`);
+
+    // Generate forecast based on real data only
+    const forecast = generateForecastFromRealData(
+      routeSegments,
+      turbulenceReports,
+    );
+
+    console.log(
+      `✅ Generated fallback forecast with ${forecast.length} segments`,
+    );
+    console.log(`📋 FULL FORECAST DATA:`, JSON.stringify(forecast, null, 2));
+
+    // Calculate overall route severity (most severe across all segments)
+    const overallSeverity = calculateOverallSeverity(forecast);
+    console.log(`🎯 Overall route severity: ${overallSeverity}`);
+
+    const result = {
+      flightNumber: flightNumber.toUpperCase(),
+      route: {
+        from: fromIata,
+        to: toIata,
+      },
+      severity: overallSeverity,
+      forecast,
+      lastUpdated: new Date().toISOString(),
+      flightInfo: useAeroDataBox
+        ? {
+            airline: aeroDataBoxFlight.airline,
+            aircraft: {
+              registration: aeroDataBoxFlight.aircraft.reg || "Unknown",
+              model: aeroDataBoxFlight.aircraft.model,
+            },
+            status: aeroDataBoxFlight.status,
+            distance: {
+              km: aeroDataBoxFlight.greatCircleDistance.km,
+              miles: aeroDataBoxFlight.greatCircleDistance.mile,
+              nm: aeroDataBoxFlight.greatCircleDistance.nm,
+            },
+            schedule: {
+              departure: {
+                airport: aeroDataBoxFlight.departure.airport.name,
+                scheduled: aeroDataBoxFlight.departure.scheduledTime.utc,
+                terminal: aeroDataBoxFlight.departure.terminal,
+              },
+              arrival: {
+                airport: aeroDataBoxFlight.arrival.airport.name,
+                scheduled: aeroDataBoxFlight.arrival.scheduledTime.utc,
+                terminal: aeroDataBoxFlight.arrival.terminal,
+              },
+            },
+            lastUpdated: aeroDataBoxFlight.lastUpdatedUtc,
+          }
+        : {
+            airline: {
+              name: flightRoute!.airline.name,
+              iata: flightRoute!.airline.iata,
+              icao: flightRoute!.airline.iata, // Use iata as fallback for icao
+            },
+            aircraft: {
+              registration: "Unknown",
+              model: "Unknown",
+            },
+            status: flightRoute!.status,
+            distance: {
+              km: 0,
+              miles: 0,
+              nm: 0,
+            },
+            schedule: {
+              departure: {
+                airport: flightRoute!.from.name,
+                scheduled: "Unknown",
+              },
+              arrival: {
+                airport: flightRoute!.to.name,
+                scheduled: "Unknown",
+              },
+            },
+            lastUpdated: new Date().toISOString(),
+          },
+      dataSource: {
+        flightRoute: useAeroDataBox ? "aerodatabox" : "real",
+        turbulenceReports: turbulenceReports.length > 0 ? "real" : "none",
+        pirepsCount: turbulenceReports.length,
+        aviationStackAvailable: !!process.env.FLIGHTAWARE_API_KEY,
+        aerodataboxAvailable: useAeroDataBox,
+      },
+    };
+
+    console.log(`📋 FULL FINAL RESULT:`, JSON.stringify(result, null, 2));
+    return result as TurbulenceForecast;
   }
+}
 
-  // Generate forecast based on real data only
-  const forecast = generateForecastFromRealData(
-    routeSegments,
-    turbulenceReports,
-  );
+// Convert BumpySkies format to our API format
+function convertBumpySkiesToApiFormat(bumpyForecast: any): Array<{
+  segment: string;
+  severity: "smooth" | "light" | "moderate" | "severe";
+  altitude: string;
+  probability: number;
+}> {
+  console.log(`🔄 Converting BumpySkies forecast to API format...`);
 
-  console.log(`✅ Generated forecast with ${forecast.length} segments`);
-  console.log(`📋 FULL FORECAST DATA:`, JSON.stringify(forecast, null, 2));
+  return bumpyForecast.segments.map((segment: any, index: number) => {
+    // Map BumpySkies conditions to our severity levels
+    let severity: "smooth" | "light" | "moderate" | "severe";
+    switch (segment.condition) {
+      case "calm":
+        severity = "smooth";
+        break;
+      case "light":
+        severity = "light";
+        break;
+      case "moderate":
+        severity = "moderate";
+        break;
+      case "severe":
+        severity = "severe";
+        break;
+      default:
+        severity = "smooth";
+    }
 
-  // Calculate overall route severity (most severe across all segments)
-  const overallSeverity = calculateOverallSeverity(forecast);
-  console.log(`🎯 Overall route severity: ${overallSeverity}`);
+    // Calculate probability based on confidence and severity
+    let probability = 0;
+    if (severity !== "smooth") {
+      probability = Math.round(segment.confidence * 100) / 100;
+      if (severity === "light") probability = Math.max(0.3, probability);
+      if (severity === "moderate") probability = Math.max(0.5, probability);
+      if (severity === "severe") probability = Math.max(0.7, probability);
+    }
+
+    return {
+      segment: `${bumpyForecast.departure.iata} → ${bumpyForecast.arrival.iata} (${index + 1}/${bumpyForecast.segments.length})`,
+      severity,
+      altitude: `${Math.round(segment.altitude)}ft`,
+      probability: Math.round(probability * 100) / 100,
+    };
+  });
+}
+
+// Create result using BumpySkies data
+function createResultFromBumpySkies(
+  flightNumber: string,
+  bumpyForecast: any,
+  forecast: Array<{
+    segment: string;
+    severity: string;
+    altitude: string;
+    probability: number;
+  }>,
+  useAeroDataBox: boolean,
+  aeroDataBoxFlight: any,
+  flightRoute: any,
+): TurbulenceForecast {
+  console.log(`📋 Creating result from BumpySkies data...`);
+
+  // Calculate overall severity
+  const overallSeverity = calculateOverallSeverity(forecast as any);
 
   const result = {
     flightNumber: flightNumber.toUpperCase(),
     route: {
-      from: fromIata,
-      to: toIata,
+      from: bumpyForecast.departure.iata,
+      to: bumpyForecast.arrival.iata,
     },
     severity: overallSeverity,
     forecast,
     lastUpdated: new Date().toISOString(),
-    flightInfo: useAeroDataBox
-      ? {
-          airline: aeroDataBoxFlight.airline,
-          aircraft: {
-            registration: aeroDataBoxFlight.aircraft.reg || "Unknown",
-            model: aeroDataBoxFlight.aircraft.model,
-          },
-          status: aeroDataBoxFlight.status,
-          distance: {
-            km: aeroDataBoxFlight.greatCircleDistance.km,
-            miles: aeroDataBoxFlight.greatCircleDistance.mile,
-            nm: aeroDataBoxFlight.greatCircleDistance.nm,
-          },
-          schedule: {
-            departure: {
-              airport: aeroDataBoxFlight.departure.airport.name,
-              scheduled: aeroDataBoxFlight.departure.scheduledTime.utc,
-              terminal: aeroDataBoxFlight.departure.terminal,
+    flightInfo:
+      useAeroDataBox && aeroDataBoxFlight
+        ? {
+            airline: aeroDataBoxFlight.airline,
+            aircraft: {
+              registration: aeroDataBoxFlight.aircraft.reg || "Unknown",
+              model: aeroDataBoxFlight.aircraft.model,
             },
-            arrival: {
-              airport: aeroDataBoxFlight.arrival.airport.name,
-              scheduled: aeroDataBoxFlight.arrival.scheduledTime.utc,
-              terminal: aeroDataBoxFlight.arrival.terminal,
+            status: aeroDataBoxFlight.status,
+            distance: {
+              km: aeroDataBoxFlight.greatCircleDistance.km,
+              miles: aeroDataBoxFlight.greatCircleDistance.mile,
+              nm: aeroDataBoxFlight.greatCircleDistance.nm,
             },
-          },
-          lastUpdated: aeroDataBoxFlight.lastUpdatedUtc,
-        }
-      : {
-          airline: {
-            name: flightRoute!.airline.name,
-            iata: flightRoute!.airline.iata,
-            icao: flightRoute!.airline.iata, // Use iata as fallback for icao
-          },
-          aircraft: {
-            registration: "Unknown",
-            model: "Unknown",
-          },
-          status: flightRoute!.status,
-          distance: {
-            km: 0,
-            miles: 0,
-            nm: 0,
-          },
-          schedule: {
-            departure: {
-              airport: flightRoute!.from.name,
-              scheduled: "Unknown",
+            schedule: {
+              departure: {
+                airport: aeroDataBoxFlight.departure.airport.name,
+                scheduled: aeroDataBoxFlight.departure.scheduledTime.utc,
+                terminal: aeroDataBoxFlight.departure.terminal,
+              },
+              arrival: {
+                airport: aeroDataBoxFlight.arrival.airport.name,
+                scheduled: aeroDataBoxFlight.arrival.scheduledTime.utc,
+                terminal: aeroDataBoxFlight.arrival.terminal,
+              },
             },
-            arrival: {
-              airport: flightRoute!.to.name,
-              scheduled: "Unknown",
+            lastUpdated: aeroDataBoxFlight.lastUpdatedUtc,
+          }
+        : {
+            airline: {
+              name: flightRoute?.airline?.name || "Unknown",
+              iata: flightRoute?.airline?.iata || "Unknown",
+              icao: flightRoute?.airline?.iata || "Unknown",
             },
+            aircraft: {
+              registration: "Unknown",
+              model: "Unknown",
+            },
+            status: flightRoute?.status || "Unknown",
+            distance: {
+              km: 0,
+              miles: 0,
+              nm: 0,
+            },
+            schedule: {
+              departure: {
+                airport: bumpyForecast.departure.airport,
+                scheduled: "Unknown",
+              },
+              arrival: {
+                airport: bumpyForecast.arrival.airport,
+                scheduled: "Unknown",
+              },
+            },
+            lastUpdated: new Date().toISOString(),
           },
-          lastUpdated: new Date().toISOString(),
-        },
     dataSource: {
       flightRoute: useAeroDataBox ? "aerodatabox" : "real",
-      turbulenceReports: turbulenceReports.length > 0 ? "real" : "none",
-      pirepsCount: turbulenceReports.length,
+      turbulenceReports: "real", // BumpySkies provides real turbulence modeling
+      pirepsCount: bumpyForecast.segments.length,
       aviationStackAvailable: !!process.env.FLIGHTAWARE_API_KEY,
       aerodataboxAvailable: useAeroDataBox,
     },
   };
 
-  console.log(`📋 FULL FINAL RESULT:`, JSON.stringify(result, null, 2));
   return result as TurbulenceForecast;
 }
 
@@ -656,6 +979,185 @@ function generateForecastFromRealData(
   });
 }
 
+// Get basic flight info quickly (FlightAware + AeroDataBox)
+async function getBasicFlightInfo(flightNumber: string) {
+  const cacheKey = `${flightNumber}_basic`;
+  console.log(`🔍 Getting basic flight info for ${flightNumber}...`);
+  cacheMetrics.totalRequests++;
+
+  // Check basic cache first
+  const cached = basicCache.get(cacheKey);
+  if (cached && Date.now() - cached.timestamp < BASIC_CACHE_DURATION) {
+    console.log(`💾 Cache HIT for basic info: ${flightNumber}`);
+    cached.hits++;
+    cached.lastAccessed = Date.now();
+    cacheMetrics.totalHits++;
+    return cached.data;
+  }
+
+  console.log(`💥 Cache MISS for basic info: ${flightNumber}`);
+  cacheMetrics.totalMisses++;
+
+  // Check if there's already an active request for this flight
+  if (activeRequests.has(cacheKey)) {
+    console.log(`⏳ Waiting for active request for ${flightNumber}...`);
+    try {
+      const result = await activeRequests.get(cacheKey);
+      return result;
+    } catch (error) {
+      console.log(
+        `❌ Active request failed for ${flightNumber}, making new request`,
+      );
+    }
+  }
+
+  // Create a promise for this request to prevent duplicates
+  const requestPromise = (async () => {
+    // Try AeroDataBox first (faster)
+    const aeroDataBoxFlight = await getAeroDataBoxFlight(flightNumber);
+    if (aeroDataBoxFlight) {
+      const basicInfo = {
+        flightNumber: flightNumber.toUpperCase(),
+        route: {
+          from: aeroDataBoxFlight.departure?.airport?.iata,
+          to: aeroDataBoxFlight.arrival?.airport?.iata,
+        },
+        severity: "smooth", // Default until full analysis
+        forecast: [
+          {
+            segment: `${aeroDataBoxFlight.departure?.airport?.iata} → ${aeroDataBoxFlight.arrival?.airport?.iata}`,
+            severity: "smooth" as const,
+            altitude: "35000ft",
+            probability: 0,
+          },
+        ],
+        lastUpdated: new Date().toISOString(),
+        flightInfo: {
+          airline: aeroDataBoxFlight.airline,
+          aircraft: {
+            registration: aeroDataBoxFlight.aircraft.reg || "Unknown",
+            model: aeroDataBoxFlight.aircraft.model,
+          },
+          status: aeroDataBoxFlight.status,
+          distance: {
+            km: aeroDataBoxFlight.greatCircleDistance.km,
+            miles: aeroDataBoxFlight.greatCircleDistance.mile,
+            nm: aeroDataBoxFlight.greatCircleDistance.nm,
+          },
+          schedule: {
+            departure: {
+              airport: aeroDataBoxFlight.departure.airport.name,
+              scheduled: aeroDataBoxFlight.departure.scheduledTime.utc,
+              terminal: aeroDataBoxFlight.departure.terminal,
+            },
+            arrival: {
+              airport: aeroDataBoxFlight.arrival.airport.name,
+              scheduled: aeroDataBoxFlight.arrival.scheduledTime.utc,
+              terminal: aeroDataBoxFlight.arrival.terminal,
+            },
+          },
+          lastUpdated: aeroDataBoxFlight.lastUpdatedUtc,
+        },
+        dataSource: {
+          flightRoute: "aerodatabox",
+          turbulenceReports: "none",
+          pirepsCount: 0,
+          aviationStackAvailable: !!process.env.FLIGHTAWARE_API_KEY,
+          aerodataboxAvailable: true,
+        },
+        loading: true, // Indicate this is preliminary data
+      };
+
+      // Cache basic info with enhanced metadata
+      basicCache.set(cacheKey, {
+        data: basicInfo,
+        timestamp: Date.now(),
+        hits: 0,
+        lastAccessed: Date.now(),
+      });
+
+      return basicInfo;
+    }
+
+    // Fallback to FlightAware
+    const flightRoute = await flightAwareService.getFlightRoute(flightNumber);
+    if (flightRoute) {
+      const basicInfo = {
+        flightNumber: flightNumber.toUpperCase(),
+        route: {
+          from: flightRoute.from.iata,
+          to: flightRoute.to.iata,
+        },
+        severity: "smooth",
+        forecast: [
+          {
+            segment: `${flightRoute.from.iata} → ${flightRoute.to.iata}`,
+            severity: "smooth" as const,
+            altitude: "35000ft",
+            probability: 0,
+          },
+        ],
+        lastUpdated: new Date().toISOString(),
+        flightInfo: {
+          airline: flightRoute.airline,
+          aircraft: {
+            registration: "Unknown",
+            model: "Unknown",
+          },
+          status: flightRoute.status,
+          distance: {
+            km: 0,
+            miles: 0,
+            nm: 0,
+          },
+          schedule: {
+            departure: {
+              airport: flightRoute.from.name,
+              scheduled: "Unknown",
+            },
+            arrival: {
+              airport: flightRoute.to.name,
+              scheduled: "Unknown",
+            },
+          },
+          lastUpdated: new Date().toISOString(),
+        },
+        dataSource: {
+          flightRoute: "real",
+          turbulenceReports: "none",
+          pirepsCount: 0,
+          aviationStackAvailable: !!process.env.FLIGHTAWARE_API_KEY,
+          aerodataboxAvailable: false,
+        },
+        loading: true,
+      };
+
+      // Cache basic info with enhanced metadata
+      basicCache.set(cacheKey, {
+        data: basicInfo,
+        timestamp: Date.now(),
+        hits: 0,
+        lastAccessed: Date.now(),
+      });
+
+      return basicInfo;
+    }
+
+    throw new Error(`Flight ${flightNumber} not found`);
+  })();
+
+  // Store the promise to prevent duplicate requests
+  activeRequests.set(cacheKey, requestPromise);
+
+  try {
+    const result = await requestPromise;
+    return result;
+  } finally {
+    // Clean up the active request
+    activeRequests.delete(cacheKey);
+  }
+}
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
@@ -681,28 +1183,68 @@ export async function POST(request: NextRequest) {
     const cacheKey = flightNumber.toUpperCase();
     console.log(`🔑 Cache key: ${cacheKey}`);
 
-    // Check cache
+    // Always return basic flight info immediately for POST requests
+    console.log(
+      `⚡ Returning basic flight info immediately for ${flightNumber}`,
+    );
+    const basicInfo = await getBasicFlightInfo(flightNumber);
+
+    // Check if full forecast is already cached and ready
     const cached = forecastCache.get(cacheKey);
     if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
-      console.log(`💾 Returning cached result for ${flightNumber}`);
-      return NextResponse.json(cached.data);
+      console.log(`💾 Full forecast already cached for ${flightNumber}`);
+      cached.hits++;
+      cached.lastAccessed = Date.now();
+      cacheMetrics.totalHits++;
+
+      // Update basic info to show full forecast is ready
+      basicInfo.loading = false;
+      basicInfo.forecast = cached.data.forecast;
+      basicInfo.severity = cached.data.severity;
+      basicInfo.dataSource = cached.data.dataSource;
+    } else {
+      console.log(`💥 Full forecast cache MISS for ${flightNumber}`);
+      cacheMetrics.totalMisses++;
+
+      // Check if there's already an active request for this forecast
+      const forecastRequestKey = `forecast_${flightNumber}`;
+      if (activeRequests.has(forecastRequestKey)) {
+        console.log(
+          `⏳ Full forecast already being generated for ${flightNumber}`,
+        );
+      } else {
+        // Start generating full forecast asynchronously (don't await)
+        const forecastPromise = createTurbulenceForecast(flightNumber)
+          .then((fullForecast) => {
+            // Update cache with complete data
+            forecastCache.set(cacheKey, {
+              data: fullForecast,
+              timestamp: Date.now(),
+              hits: 0,
+              lastAccessed: Date.now(),
+            });
+            console.log(
+              `✅ Full forecast generated and cached for ${flightNumber}`,
+            );
+            return fullForecast;
+          })
+          .catch((error) => {
+            console.error(
+              `❌ Failed to generate full forecast for ${flightNumber}:`,
+              error,
+            );
+            throw error;
+          })
+          .finally(() => {
+            activeRequests.delete(forecastRequestKey);
+          });
+
+        // Store the promise to prevent duplicate requests
+        activeRequests.set(forecastRequestKey, forecastPromise);
+      }
     }
 
-    console.log(`🔄 Cache miss - generating new forecast for ${flightNumber}`);
-
-    // Generate new forecast
-    const forecast = await createTurbulenceForecast(flightNumber);
-
-    // Cache the result
-    forecastCache.set(cacheKey, {
-      data: forecast,
-      timestamp: Date.now(),
-    });
-
-    console.log(
-      `✅ Successfully generated and cached forecast for ${flightNumber}`,
-    );
-    return NextResponse.json(forecast);
+    return NextResponse.json(basicInfo);
   } catch (error) {
     console.error("Turbulence API error:", error);
 
@@ -732,40 +1274,192 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// Optional: Add GET method for API documentation
-export async function GET() {
-  return NextResponse.json({
-    message: "Turbulence Forecast API",
-    version: "1.0.0",
-    endpoints: {
-      "POST /api/turbulence": {
-        description: "Get turbulence forecast for a flight",
-        requestBody: {
-          flightNumber: "string (e.g., AA100, UA2457)",
-        },
-        response: {
-          flightNumber: "string",
-          route: {
-            from: "string (airport code)",
-            to: "string (airport code)",
-          },
-          forecast: [
-            {
-              segment: "string (e.g., JFK → LAX)",
-              severity: "smooth | light | moderate | severe",
-              altitude: "string (e.g., 30000ft)",
-              probability: "number (0-1)",
+// GET method for full forecast (after basic info is loaded)
+export async function GET(request: NextRequest) {
+  try {
+    const url = new URL(request.url);
+    const flightNumber = url.searchParams.get("flightNumber");
+
+    if (!flightNumber) {
+      // Check for cache clear command
+      const clearCacheParam = url.searchParams.get("clearCache");
+      if (clearCacheParam === "true") {
+        clearCache();
+        return NextResponse.json({
+          message: "Cache cleared successfully",
+          timestamp: new Date().toISOString(),
+        });
+      }
+
+      // Check for cache metrics command
+      const metricsParam = url.searchParams.get("metrics");
+      if (metricsParam === "true") {
+        const hitRate =
+          cacheMetrics.totalRequests > 0
+            ? (
+                (cacheMetrics.totalHits / cacheMetrics.totalRequests) *
+                100
+              ).toFixed(1)
+            : "0";
+
+        return NextResponse.json({
+          message: "Cache Metrics",
+          timestamp: new Date().toISOString(),
+          metrics: {
+            hitRate: `${hitRate}%`,
+            totalHits: cacheMetrics.totalHits,
+            totalMisses: cacheMetrics.totalMisses,
+            totalRequests: cacheMetrics.totalRequests,
+            cacheSizes: {
+              forecast: forecastCache.size,
+              basic: basicCache.size,
             },
-          ],
-          lastUpdated: "string (ISO 8601)",
-          dataSource: {
-            flightRoute: "real",
-            turbulenceReports: "real | none",
-            pirepsCount: "number",
-            aviationStackAvailable: "boolean (FlightAware API key available)",
+            activeRequests: cacheMetrics.activeRequests.size,
+            cacheDuration: {
+              forecast: `${CACHE_DURATION / 1000}s`,
+              basic: `${BASIC_CACHE_DURATION / 1000}s`,
+            },
+          },
+        });
+      }
+
+      return NextResponse.json({
+        message: "Turbulence Forecast API",
+        version: "1.0.0",
+        endpoints: {
+          "POST /api/turbulence": {
+            description:
+              "Get basic flight info immediately, then full forecast asynchronously",
+            requestBody: {
+              flightNumber: "string (e.g., AA100, UA2457)",
+            },
+          },
+          "GET /api/turbulence?flightNumber=XX123": {
+            description: "Get full turbulence forecast (call after basic info)",
+          },
+          "GET /api/turbulence?clearCache=true": {
+            description: "Clear all caches (for testing)",
+          },
+          "GET /api/turbulence?metrics=true": {
+            description: "Get cache performance metrics",
           },
         },
+        features: {
+          caching: {
+            type: "In-memory Map",
+            durations: {
+              forecast: `${CACHE_DURATION / 1000} seconds`,
+              basic: `${BASIC_CACHE_DURATION / 1000} seconds`,
+            },
+            maxSize: MAX_CACHE_SIZE,
+            cleanup: "Automatic every 10 minutes",
+          },
+          duplicatePrevention: "Active request tracking",
+          logging: "Enhanced with timing and metrics",
+        },
+      });
+    }
+
+    // Validate flight number
+    const validationResult = turbulenceRequestSchema.safeParse({
+      flightNumber,
+    });
+    if (!validationResult.success) {
+      return NextResponse.json(
+        {
+          error: "Invalid flight number format",
+          details: validationResult.error.errors,
+        },
+        { status: 400 },
+      );
+    }
+
+    const { flightNumber: validFlightNumber } = validationResult.data;
+    const cacheKey = validFlightNumber.toUpperCase();
+
+    console.log(
+      `🔍 GET /api/turbulence - Requesting full forecast for ${validFlightNumber}`,
+    );
+
+    // Check if full forecast is ready
+    const cached = forecastCache.get(cacheKey);
+    if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
+      console.log(`💾 Cache HIT for full forecast: ${validFlightNumber}`);
+      cached.hits++;
+      cached.lastAccessed = Date.now();
+      cacheMetrics.totalHits++;
+      return NextResponse.json(cached.data);
+    }
+
+    console.log(`💥 Cache MISS for full forecast: ${validFlightNumber}`);
+    cacheMetrics.totalMisses++;
+
+    // Check if there's already an active request for this forecast
+    const forecastRequestKey = `forecast_${validFlightNumber}`;
+    if (activeRequests.has(forecastRequestKey)) {
+      console.log(
+        `⏳ Waiting for active forecast generation for ${validFlightNumber}...`,
+      );
+      try {
+        const result = await activeRequests.get(forecastRequestKey);
+        return NextResponse.json(result);
+      } catch (error) {
+        console.log(
+          `❌ Active forecast request failed for ${validFlightNumber}, making new request`,
+        );
+      }
+    }
+
+    // Generate full forecast if not cached
+    console.log(`🔄 Generating full forecast for ${validFlightNumber}`);
+    const forecastPromise = createTurbulenceForecast(validFlightNumber)
+      .then((fullForecast) => {
+        // Cache the result with enhanced metadata
+        forecastCache.set(cacheKey, {
+          data: fullForecast,
+          timestamp: Date.now(),
+          hits: 0,
+          lastAccessed: Date.now(),
+        });
+
+        console.log(
+          `✅ Full forecast generated and cached for ${validFlightNumber}`,
+        );
+        return fullForecast;
+      })
+      .finally(() => {
+        activeRequests.delete(forecastRequestKey);
+      });
+
+    // Store the promise to prevent duplicate requests
+    activeRequests.set(forecastRequestKey, forecastPromise);
+
+    const fullForecast = await forecastPromise;
+    return NextResponse.json(fullForecast);
+  } catch (error) {
+    console.error("Turbulence GET API error:", error);
+
+    if (error instanceof Error) {
+      if (error.message.includes("not found")) {
+        return NextResponse.json(
+          { error: "Flight not found", details: error.message },
+          { status: 404 },
+        );
+      }
+      if (error.message.includes("coordinates")) {
+        return NextResponse.json(
+          { error: "Route data incomplete", details: error.message },
+          { status: 422 },
+        );
+      }
+    }
+
+    return NextResponse.json(
+      {
+        error: "Unable to fetch full turbulence forecast",
+        details: error instanceof Error ? error.message : "Unknown error",
       },
-    },
-  });
+      { status: 503 },
+    );
+  }
 }

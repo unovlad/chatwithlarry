@@ -33,6 +33,9 @@ export default function PlansClient({ user }: PlansClientProps) {
   const [subscriptionEndDate, setSubscriptionEndDate] = useState<string | null>(
     user.subscription_end_date || null,
   );
+  const [subscriptionStatus, setSubscriptionStatus] = useState<string>(
+    user.subscription_status || "active",
+  );
   const [daysLeft, setDaysLeft] = useState<number | null>(null);
 
   const [isPending, startTransition] = useTransition();
@@ -55,13 +58,16 @@ export default function PlansClient({ user }: PlansClientProps) {
         const supabase = createClient();
         const { data: profile } = await supabase
           .from("users")
-          .select("subscription_plan, subscription_end_date")
+          .select(
+            "subscription_plan, subscription_end_date, subscription_status",
+          )
           .eq("id", user.id)
           .single();
 
         if (profile) {
           setUserPlan(profile.subscription_plan);
           setSubscriptionEndDate(profile.subscription_end_date);
+          setSubscriptionStatus(profile.subscription_status);
         }
       },
       5 * 60 * 1000,
@@ -117,13 +123,16 @@ export default function PlansClient({ user }: PlansClientProps) {
         const supabase = createClient();
         const { data: profile } = await supabase
           .from("users")
-          .select("subscription_plan, subscription_end_date")
+          .select(
+            "subscription_plan, subscription_end_date, subscription_status",
+          )
           .eq("id", user.id)
           .single();
 
         if (profile) {
           setUserPlan(profile.subscription_plan);
           setSubscriptionEndDate(profile.subscription_end_date);
+          setSubscriptionStatus(profile.subscription_status);
         }
       };
 
@@ -137,32 +146,60 @@ export default function PlansClient({ user }: PlansClientProps) {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-12">
           {/* Current Plan Status */}
           {userPlan === "premium" && (
-            <div className="mb-6 sm:mb-8 p-4 sm:p-6 bg-blue-50 border border-blue-200 rounded-lg">
+            <div
+              className={`mb-6 sm:mb-8 p-4 sm:p-6 border rounded-lg ${
+                subscriptionStatus === "cancelled"
+                  ? "bg-orange-50 border-orange-200"
+                  : "bg-blue-50 border-blue-200"
+              }`}
+            >
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div>
-                  <h3 className="text-base sm:text-lg font-semibold text-blue-900 mb-2">
+                  <h3
+                    className={`text-base sm:text-lg font-semibold mb-2 ${
+                      subscriptionStatus === "cancelled"
+                        ? "text-orange-900"
+                        : "text-blue-900"
+                    }`}
+                  >
                     Current Plan: Premium
+                    {subscriptionStatus === "cancelled" && " (Cancelled)"}
                   </h3>
-                  {daysLeft !== null && (
+                  {daysLeft !== null && subscriptionStatus !== "cancelled" && (
                     <p className="text-sm sm:text-base text-blue-700">
                       {daysLeft > 0
                         ? `${daysLeft} days remaining in your subscription`
                         : "Your subscription has expired"}
                     </p>
                   )}
-                  {subscriptionEndDate && (
-                    <p className="text-xs sm:text-sm text-blue-600 mt-1">
-                      Next billing:{" "}
-                      {new Date(subscriptionEndDate).toLocaleDateString(
-                        "en-US",
-                        {
-                          month: "short",
-                          day: "numeric",
-                          year: "numeric",
-                        },
-                      )}
-                    </p>
-                  )}
+                  {subscriptionStatus === "cancelled" &&
+                    subscriptionEndDate && (
+                      <p className="text-sm sm:text-base text-orange-700">
+                        Your subscription will end on{" "}
+                        {new Date(subscriptionEndDate).toLocaleDateString(
+                          "en-US",
+                          {
+                            month: "short",
+                            day: "numeric",
+                            year: "numeric",
+                          },
+                        )}
+                      </p>
+                    )}
+                  {subscriptionEndDate &&
+                    subscriptionStatus !== "cancelled" && (
+                      <p className="text-xs sm:text-sm text-blue-600 mt-1">
+                        Next billing:{" "}
+                        {new Date(subscriptionEndDate).toLocaleDateString(
+                          "en-US",
+                          {
+                            month: "short",
+                            day: "numeric",
+                            year: "numeric",
+                          },
+                        )}
+                      </p>
+                    )}
                 </div>
                 <Button
                   onClick={async () => {
@@ -189,9 +226,11 @@ export default function PlansClient({ user }: PlansClientProps) {
                     }
                   }}
                   variant="outline"
-                  className="bg-blue-600 hover:bg-blue-700 text-white hover:text-white w-full sm:w-auto"
+                  className=""
                 >
-                  Manage Subscription
+                  {subscriptionStatus === "cancelled"
+                    ? "Reactivate Subscription"
+                    : "Manage Subscription"}
                 </Button>
               </div>
             </div>
@@ -212,7 +251,7 @@ export default function PlansClient({ user }: PlansClientProps) {
               price="$0"
               description="Perfect for getting started"
               features={["30 messages per month", "Basic chat functionality"]}
-              cta={userPlan === "free" ? "Current Plan" : "Start Free"}
+              cta={userPlan === "free" ? "Current Plan" : "Free"}
               active={userPlan === "free"}
               onClick={() => {}}
             />
@@ -224,13 +263,9 @@ export default function PlansClient({ user }: PlansClientProps) {
               description="For power users and professionals"
               features={[
                 "Unlimited messages",
+                "Unlimited Turbulence Forecasts",
                 "Advanced AI capabilities",
                 "Priority response time",
-                "Email support",
-                "Advanced document processing",
-                "Custom AI instructions",
-                "Export conversations",
-                "API access",
               ]}
               cta={
                 isLoading

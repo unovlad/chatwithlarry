@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { SignInForm } from "./SignInForm";
 import { SignUpForm } from "./SignUpForm";
 import { X } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -19,11 +20,18 @@ export function AuthModal({
 }: AuthModalProps) {
   const [mode, setMode] = useState<"signin" | "signup">(defaultMode);
   const router = useRouter();
+  const { user, loading } = useAuth();
+
+  // Close modal when user is authenticated and not loading
+  useEffect(() => {
+    if (user && !loading && isOpen) {
+      onClose();
+      router.push("/");
+    }
+  }, [user, loading, isOpen, onClose, router]);
 
   const handleSuccess = () => {
-    onClose();
-
-    router.push("/");
+    // Don't close immediately - let the useEffect handle it when user state updates
   };
 
   const switchToSignUp = () => {

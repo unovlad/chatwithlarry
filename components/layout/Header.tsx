@@ -15,7 +15,7 @@ const HeaderComp = () => {
 
       <div className="flex items-center gap-4">
         <Link
-          href="/turbulence"
+          href="/forecast"
           className="flex items-center gap-2 text-sm text-gray-600 hover:text-gray-800 transition-colors"
         >
           <Plane className="w-4 h-4" />

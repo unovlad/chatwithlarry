@@ -41,19 +41,10 @@ export function PricingCard({
       className={cn(
         "relative transition-all duration-200 hover:shadow-lg",
         active && "ring-2 ring-blue-500 shadow-lg",
-        popular && "ring-2 ring-orange-500 shadow-lg scale-105",
+        popular && "ring-2 ring-blue-500 shadow-lg scale-105",
         blue && "bg-gradient-to-br from-blue-50 to-indigo-50 border-blue-200",
       )}
     >
-      {popular && (
-        <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
-          <div className="bg-orange-500 text-white px-3 py-1 rounded-full text-sm font-medium flex items-center gap-1">
-            <Star className="h-3 w-3" />
-            Most Popular
-          </div>
-        </div>
-      )}
-
       <CardHeader className="text-center pb-4">
         <CardTitle className="text-2xl font-bold">{name}</CardTitle>
         <div className="mt-2">
@@ -80,9 +71,7 @@ export function PricingCard({
             className={cn(
               "w-full",
               active && "bg-gray-100 text-gray-500 cursor-not-allowed",
-              popular &&
-                !active &&
-                "bg-orange-500 hover:bg-orange-600 text-white",
+              popular && !active && "bg-blue-500 hover:bg-blue-600 text-white",
               blue && !active && "bg-blue-500 hover:bg-blue-600 text-white",
               !active &&
                 !popular &&
