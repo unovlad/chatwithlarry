@@ -138,7 +138,17 @@ export class EnhancedBumpySkiesService {
             lon: flight.destination.longitude,
           },
         },
-        waypoints: flight.waypoints || [],
+        airline: {
+          name: flight.operator || "Unknown",
+          iata: flight.operator_iata || "XX",
+        },
+        status: (flight.status || "unknown") as
+          | "scheduled"
+          | "live"
+          | "landed"
+          | "cancelled"
+          | "unknown",
+        route: flight.waypoints?.join(" ") || "",
       };
     }
 
@@ -177,10 +187,32 @@ export class EnhancedBumpySkiesService {
           name: `${route.to} Airport`,
           coordinates: this.getAirportCoordinates(route.to),
         },
+        airline: {
+          name: this.getAirlineName(airline),
+          iata: airline,
+        },
+        status: "scheduled" as
+          | "scheduled"
+          | "live"
+          | "landed"
+          | "cancelled"
+          | "unknown",
       };
     }
 
     return null;
+  }
+
+  private getAirlineName(iata: string): string {
+    const airlines: Record<string, string> = {
+      JBU: "JetBlue Airways",
+      AAL: "American Airlines",
+      UAL: "United Airlines",
+      DAL: "Delta Air Lines",
+      SWA: "Southwest Airlines",
+      FFT: "Frontier Airlines",
+    };
+    return airlines[iata] || `${iata} Airlines`;
   }
 
   private getAirportCoordinates(iata: string): { lat: number; lon: number } {
@@ -405,6 +437,7 @@ export class EnhancedBumpySkiesService {
     // Filter PIREPs that are relevant to the flight route
     return pireps
       .filter((pirep) => {
+        if (!route.from.coordinates) return false;
         const distance = this.calculateDistance(
           { lat: pirep.lat, lon: pirep.lon },
           route.from.coordinates,
@@ -512,6 +545,12 @@ export class EnhancedBumpySkiesService {
   private createRouteSegments(route: FlightRoute): RouteSegment[] {
     const segments: RouteSegment[] = [];
     const segmentCount = 6; // 6 segments for detailed forecast
+
+    // Check if coordinates are available
+    if (!route.from.coordinates || !route.to.coordinates) {
+      console.warn("Route coordinates missing, using default segments");
+      return segments;
+    }
 
     for (let i = 0; i < segmentCount; i++) {
       const ratio1 = i / segmentCount;
@@ -792,6 +831,7 @@ export class EnhancedBumpySkiesService {
 
   private getMockSIGMETs(route: FlightRoute): SIGMETReport[] {
     // Mock SIGMET data - in real implementation, would be filtered by route
+    const fromCoords = route.from.coordinates || { lat: 40, lon: -74 };
     return [
       {
         id: "mock-sigmet-1",
@@ -800,8 +840,8 @@ export class EnhancedBumpySkiesService {
         phenomenon: "turbulence",
         severity: "moderate",
         area: {
-          lat: route.from.coordinates.lat,
-          lon: route.from.coordinates.lon,
+          lat: fromCoords.lat,
+          lon: fromCoords.lon,
           radius: 200,
         },
       },
@@ -810,8 +850,10 @@ export class EnhancedBumpySkiesService {
 
   private getMockPIREPs(route: FlightRoute): PIREPReport[] {
     // Generate mock PIREPs along the route
-    const midLat = (route.from.coordinates.lat + route.to.coordinates.lat) / 2;
-    const midLon = (route.from.coordinates.lon + route.to.coordinates.lon) / 2;
+    const fromCoords = route.from.coordinates || { lat: 40, lon: -74 };
+    const toCoords = route.to.coordinates || { lat: 34, lon: -118 };
+    const midLat = (fromCoords.lat + toCoords.lat) / 2;
+    const midLon = (fromCoords.lon + toCoords.lon) / 2;
 
     return [
       {

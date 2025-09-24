@@ -106,7 +106,34 @@ export class SimpleBumpySkiesService {
         name: toAirport.name,
         coordinates: { lat: toAirport.lat, lon: toAirport.lon },
       },
+      airline: {
+        name: this.getAirlineName(flightNumber),
+        iata: this.getAirlineCode(flightNumber),
+      },
+      status: "scheduled" as
+        | "scheduled"
+        | "live"
+        | "landed"
+        | "cancelled"
+        | "unknown",
     };
+  }
+
+  private getAirlineName(flightNumber: string): string {
+    const airlineCode = flightNumber.replace(/\d+/, "");
+    const airlines: Record<string, string> = {
+      JBU: "JetBlue Airways",
+      AAL: "American Airlines",
+      UAL: "United Airlines",
+      DAL: "Delta Air Lines",
+      SWA: "Southwest Airlines",
+      FFT: "Frontier Airlines",
+    };
+    return airlines[airlineCode] || `${airlineCode} Airlines`;
+  }
+
+  private getAirlineCode(flightNumber: string): string {
+    return flightNumber.replace(/\d+/, "") || "XX";
   }
 
   private createTurbulenceForecast(route: FlightRoute): BumpySkiesForecast {
@@ -127,6 +154,12 @@ export class SimpleBumpySkiesService {
   private createRouteSegments(route: FlightRoute): RouteSegment[] {
     const segments: RouteSegment[] = [];
     const segmentCount = 6; // 6 segments for detailed forecast
+
+    // Check if coordinates are available
+    if (!route.from.coordinates || !route.to.coordinates) {
+      console.warn("Route coordinates missing, returning empty segments");
+      return segments;
+    }
 
     for (let i = 0; i < segmentCount; i++) {
       const ratio1 = i / segmentCount;

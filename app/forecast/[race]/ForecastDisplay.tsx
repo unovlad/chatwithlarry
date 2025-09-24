@@ -101,7 +101,7 @@ export function ForecastDisplay({ flightNumber }: ForecastDisplayProps) {
   const { user, canSendMessage, incrementTurbulenceCount } = useAuth();
 
   // Check if user can make turbulence request
-  const canMakeRequest = (): boolean => {
+  const canMakeRequest = useCallback((): boolean => {
     if (!isHydrated) return false;
 
     if (user) {
@@ -112,9 +112,9 @@ export function ForecastDisplay({ flightNumber }: ForecastDisplayProps) {
       const guestSession = getGuestSession();
       return guestSession.canSendTurbulenceRequest;
     }
-  };
+  }, [isHydrated, user, canSendMessage]);
 
-  const fetchFullForecast = async () => {
+  const fetchFullForecast = useCallback(async () => {
     try {
       const response = await fetch(
         `/api/turbulence?flightNumber=${flightNumber}`,
@@ -137,7 +137,7 @@ export function ForecastDisplay({ flightNumber }: ForecastDisplayProps) {
     } finally {
       setIsLoadingFull(false);
     }
-  };
+  }, [flightNumber]);
 
   // Initialize hydration
   useEffect(() => {
@@ -188,7 +188,7 @@ export function ForecastDisplay({ flightNumber }: ForecastDisplayProps) {
         setAuthChecked(true);
       }
     }
-  }, [isHydrated, authChecked, user]);
+  }, [isHydrated, authChecked, user, canMakeRequest, flightNumber]);
 
   useEffect(() => {
     const fetchForecast = async () => {
@@ -302,6 +302,7 @@ export function ForecastDisplay({ flightNumber }: ForecastDisplayProps) {
     hasFetched,
     authChecked,
     canMakeRequest,
+    fetchFullForecast,
   ]);
 
   const getSeverityColor = (severity: string) => {
