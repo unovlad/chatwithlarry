@@ -133,6 +133,7 @@ AERODATABOX_API_KEY=your_aerodatabox_api_key
 NEXT_STRIPE_SECRET_KEY=your_stripe_secret_key
 NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=your_stripe_publishable_key
 STRIPE_WEBHOOK_SECRET=your_stripe_webhook_secret
+STRIPE_PREMIUM_PRICE_ID=your_stripe_id
 
 # Email Service
 RESEND_API_KEY=your_resend_api_key
